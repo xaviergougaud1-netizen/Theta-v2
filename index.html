@@ -470,7 +470,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.23.0';
+const VERSION='3.24.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -539,16 +539,21 @@ const palPairs=P=>[...Object.values(P.tabs),...P.extra];
 // Toutes les couleurs disponibles pour un dossier (défaut + toutes les palettes, sans doublon)
 // Palette de dossiers resserrée : 8 couleurs principales et 2 déclinaisons par famille.
 const FOLDER_COLOR_FAMILIES=[
-  {name:'Bleu',main:'linear-gradient(135deg,#2563eb,#1e40af)',shades:['linear-gradient(135deg,#60a5fa,#2563eb)','linear-gradient(135deg,#1e3a8a,#172554)']},
-  {name:'Turquoise',main:'linear-gradient(135deg,#0d9488,#115e59)',shades:['linear-gradient(135deg,#5eead4,#0f766e)','linear-gradient(135deg,#134e4a,#042f2e)']},
-  {name:'Vert',main:'linear-gradient(135deg,#16a34a,#166534)',shades:['linear-gradient(135deg,#86efac,#16a34a)','linear-gradient(135deg,#14532d,#052e16)']},
-  {name:'Orange',main:'linear-gradient(135deg,#ea580c,#9a3412)',shades:['linear-gradient(135deg,#fdba74,#ea580c)','linear-gradient(135deg,#9a3412,#7c2d12)']},
-  {name:'Rouge',main:'linear-gradient(135deg,#dc2626,#991b1b)',shades:['linear-gradient(135deg,#fca5a5,#dc2626)','linear-gradient(135deg,#7f1d1d,#450a0a)']},
-  {name:'Rose',main:'linear-gradient(135deg,#db2777,#9d174d)',shades:['linear-gradient(135deg,#f9a8d4,#db2777)','linear-gradient(135deg,#831843,#500724)']},
-  {name:'Violet',main:'linear-gradient(135deg,#9333ea,#581c87)',shades:['linear-gradient(135deg,#d8b4fe,#9333ea)','linear-gradient(135deg,#581c87,#3b0764)']},
-  {name:'Gris',main:'linear-gradient(135deg,#64748b,#334155)',shades:['linear-gradient(135deg,#cbd5e1,#64748b)','linear-gradient(135deg,#334155,#0f172a)']}
+  {name:'Bleu',main:'linear-gradient(135deg,#2563eb,#1e40af)',shades:['linear-gradient(135deg,#93c5fd,#3b82f6)','linear-gradient(135deg,#60a5fa,#2563eb)','linear-gradient(135deg,#1d4ed8,#1e40af)','linear-gradient(135deg,#1e3a8a,#172554)','linear-gradient(135deg,#bfdbfe,#1d4ed8)','linear-gradient(135deg,#172554,#0f172a)']},
+  {name:'Turquoise',main:'linear-gradient(135deg,#0d9488,#115e59)',shades:['linear-gradient(135deg,#99f6e4,#2dd4bf)','linear-gradient(135deg,#5eead4,#0f766e)','linear-gradient(135deg,#14b8a6,#115e59)','linear-gradient(135deg,#134e4a,#042f2e)','linear-gradient(135deg,#ccfbf1,#0f766e)','linear-gradient(135deg,#042f2e,#022c22)']},
+  {name:'Vert',main:'linear-gradient(135deg,#16a34a,#166534)',shades:['linear-gradient(135deg,#bbf7d0,#4ade80)','linear-gradient(135deg,#86efac,#16a34a)','linear-gradient(135deg,#22c55e,#15803d)','linear-gradient(135deg,#14532d,#052e16)','linear-gradient(135deg,#dcfce7,#16a34a)','linear-gradient(135deg,#052e16,#022c22)']},
+  {name:'Orange',main:'linear-gradient(135deg,#ea580c,#9a3412)',shades:['linear-gradient(135deg,#fed7aa,#fb923c)','linear-gradient(135deg,#fdba74,#ea580c)','linear-gradient(135deg,#f97316,#c2410c)','linear-gradient(135deg,#9a3412,#7c2d12)','linear-gradient(135deg,#ffedd5,#ea580c)','linear-gradient(135deg,#7c2d12,#431407)']},
+  {name:'Rouge',main:'linear-gradient(135deg,#dc2626,#991b1b)',shades:['linear-gradient(135deg,#fecaca,#f87171)','linear-gradient(135deg,#fca5a5,#dc2626)','linear-gradient(135deg,#ef4444,#b91c1c)','linear-gradient(135deg,#7f1d1d,#450a0a)','linear-gradient(135deg,#fee2e2,#dc2626)','linear-gradient(135deg,#450a0a,#1f0707)']},
+  {name:'Rose',main:'linear-gradient(135deg,#db2777,#9d174d)',shades:['linear-gradient(135deg,#fbcfe8,#f472b6)','linear-gradient(135deg,#f9a8d4,#db2777)','linear-gradient(135deg,#ec4899,#be185d)','linear-gradient(135deg,#831843,#500724)','linear-gradient(135deg,#fce7f3,#db2777)','linear-gradient(135deg,#500724,#2a0615)']},
+  {name:'Violet',main:'linear-gradient(135deg,#9333ea,#581c87)',shades:['linear-gradient(135deg,#e9d5ff,#c084fc)','linear-gradient(135deg,#d8b4fe,#9333ea)','linear-gradient(135deg,#a855f7,#7e22ce)','linear-gradient(135deg,#581c87,#3b0764)','linear-gradient(135deg,#f3e8ff,#9333ea)','linear-gradient(135deg,#3b0764,#1e1030)']},
+  {name:'Gris',main:'linear-gradient(135deg,#64748b,#334155)',shades:['linear-gradient(135deg,#e2e8f0,#94a3b8)','linear-gradient(135deg,#cbd5e1,#64748b)','linear-gradient(135deg,#94a3b8,#475569)','linear-gradient(135deg,#334155,#0f172a)','linear-gradient(135deg,#f1f5f9,#64748b)','linear-gradient(135deg,#1e293b,#020617)']}
 ];
-const ALL_GRADS=FOLDER_COLOR_FAMILIES.flatMap(f=>[f.main,...f.shades]);
+const FOLDER_FAMILY_SIZE=7;
+const LEGACY_GRADS=[...new Set([...GRADS0,...Object.values(PALETTES).flatMap(P=>palPairs(P).map(([x,y])=>`linear-gradient(135deg,${x},${y})`))])];
+const ALL_GRADS=[...FOLDER_COLOR_FAMILIES.flatMap(f=>[f.main,...f.shades]),...LEGACY_GRADS.filter(g=>!FOLDER_COLOR_FAMILIES.some(f=>[f.main,...f.shades].includes(g)))];
+function showFolderShades(index){
+  document.querySelectorAll('#sheetWrap .folder-shade-group').forEach((el,i)=>el.style.display=i===index?'flex':'none');
+}
 // Une couleur de dossier est soit une dégradé complet (nouveau), soit un index (ancien format)
 const gradOf=c=>typeof c==='string'?c:GRADS[(c||0)%GRADS.length];
 const TAB_ICONS={jour:['☀️','🌤️','🌞','🏠','🌅','⭐','🧭','🌈','🍃','☕'],taches:['✅','☑️','✔️','📋','📌','🎯','🏁','⚡','🧩','💪','🚀','🔖'],todo:['📝','🗒️','📒','📓','💡','📂','🗂️','🖊️','🧠','📎'],agenda:['📅','🗓️','📆','⏰','🕒','⌚','🔔','🗺️']};
@@ -1567,7 +1572,7 @@ function folderSheet(f,parentId){
   const isNew=!f, v=f||{name:'',color:ALL_GRADS[Math.floor(Math.random()*ALL_GRADS.length)],icon:'📁',parentId};
   openSheet(isNew?'Nouveau dossier':'Dossier « '+f.name+' »',
     fld('Nom',inp('name',v.name,'text','required autofocus'))+fld('Icône',`<div class="swatches iconpick">${[...new Set([v.icon||'📁',...FOLDER_ICONS])].map(ic=>`<label><input type="radio" name="icon" value="${esc(ic)}" ${ic===(v.icon||'📁')?'checked':''}><span>${ic}</span></label>`).join('')}</div>`)+
-    fld('Couleurs principales',`<div class="swatches">${FOLDER_COLOR_FAMILIES.map((f,i)=>`<label title="${f.name}"><input type="radio" name="color" value="${i*3}" ${f.main===gradOf(v.color)?'checked':''}><span style="background:${f.main}"></span></label>`).join('')}</div>`)+fld('Déclinaisons',`<div class="swatches">${FOLDER_COLOR_FAMILIES.flatMap((f,i)=>f.shades.map((g,j)=>({g,i,j,name:f.name}))).map(({g,i,j,name})=>`<label title="${name} — déclinaison ${j+1}"><input type="radio" name="color" value="${i*3+j+1}" ${g===gradOf(v.color)?'checked':''}><span style="background:${g}"></span></label>`).join('')}</div>`)+
+    fld('Couleurs principales',`<div class="swatches">${FOLDER_COLOR_FAMILIES.map((f,i)=>`<label title="${f.name}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE}" onchange="showFolderShades(${i})" ${f.main===gradOf(v.color)?'checked':''}><span style="background:${f.main}"></span></label>`).join('')}</div>`)+fld('Déclinaisons de la couleur choisie',`<div class="swatches folder-shade-group" style="display:${Math.max(0,FOLDER_COLOR_FAMILIES.findIndex(f=>[f.main,...f.shades].includes(gradOf(v.color))) )>=0?'flex':'none'}">${FOLDER_COLOR_FAMILIES.map((f,i)=>({f,i})).filter(({f,i})=>i===Math.floor(Math.max(0,ALL_GRADS.indexOf(gradOf(v.color)))/FOLDER_FAMILY_SIZE)).map(({f,i})=>f.shades.map((g,j)=>`<label title="${f.name} — déclinaison ${j+1}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE+j+1}" ${g===gradOf(v.color)?'checked':''}><span style="background:${g}"></span></label>`).join('')).join('')}${ALL_GRADS.indexOf(gradOf(v.color))>=FOLDER_COLOR_FAMILIES.length*FOLDER_FAMILY_SIZE? `<label title="Ancienne couleur conservée"><input type="radio" name="color" value="${ALL_GRADS.indexOf(gradOf(v.color))}" checked><span style="background:${gradOf(v.color)}"></span></label>` : ''}</div>`)+
     fld('Dans le dossier',`<select name="parentId">${folderOptions(v.parentId,f?[f.id,...descendants(f.id)]:[])}</select>`),
     {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
      onDelete:isNew?null:()=>{
