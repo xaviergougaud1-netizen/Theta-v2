@@ -68,6 +68,11 @@ body.navtop #nav{bottom:auto;top:calc(8px + env(safe-area-inset-top))}
 .ttl a{color:var(--a1)}
 .item.done .ttl{text-decoration:line-through;color:var(--muted)}
 .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;font-size:12.5px;color:var(--muted)}
+.oneline{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.oneline .ttl{flex:0 1 auto;min-width:0;font-size:14.5px}
+.oneline .meta{margin-top:0;gap:4px}
+.oneline .meta .tag{padding:1px 6px;font-size:11.5px}
+.oneline .meta:empty{display:none}
 .meta:empty{display:none}
 .tag{display:inline-flex;align-items:center;gap:3px;background:var(--card2);border-radius:8px;padding:1px 7px;white-space:nowrap}
 .tag.late{color:#ff7d87;background:rgba(255,80,90,.13)}
@@ -470,7 +475,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.27.1';
+const VERSION='3.28.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -754,7 +759,8 @@ function render(){
 }
 
 /* ---------- Jour ---------- */
-const isSchoolHolidayEvent=e=>/vacances scolaires|vacances de (?:la )?(?:toussaint|no[eë]l|hiver|printemps|[eé]t[eé])/i.test(e?.title||'');
+const isWeekNumberEvent=e=>/^\s*(?:semaine|sem\.?|week|wk|s)\s*(?:n[°o]\.?|num[ée]ro|#)?\s*\d{1,2}\b/i.test(e?.title||'');
+const isSchoolHolidayEvent=e=>isWeekNumberEvent(e)||/vacances scolaires|vacances de (?:la )?(?:toussaint|no[eë]l|hiver|printemps|[eé]t[eé])/i.test(e?.title||'');
 function eventsOn(d){return S.events.filter(e=>!isSchoolHolidayEvent(e)&&(e.date===d||(e.endDate&&e.date<d&&e.endDate>=d))).sort(byTime)}
 const BYDAY=['SU','MO','TU','WE','TH','FR','SA'];
 const remG=r=>r.gsync===undefined||r.gsync===null?!!S.settings.pushReminders:!!r.gsync;
@@ -967,17 +973,32 @@ function taskRowLite(x){
 }
 // Un seul cadre pour un ensemble de tâches (sans sous-cadres)
 const taskCard=(L,extra='')=>`<div class="card agcard">${extra}<div class="list">${L.map(taskRowLite).join('')}</div></div>`;
+const isBirthday=e=>!!e&&(/anniv|birthday|🎂/i.test(e.title||'')||/#contacts@group\.v\.calendar\.google\.com|addressbook/i.test(e.calId||'')||/anniversaire|birthday/i.test(e.calName||''));
+const evTitle=e=>(isBirthday(e)&&!/🎂/.test(e.title||'')?'🎂 ':'')+(e.title||'');
 function eventRow(e,day){
   const c=S.settings.calendars.find(c=>c.id===e.calId);
   const color=(c&&c.color)||e.color||'var(--a1)';
   const multi=e.endDate&&e.endDate!==e.date;
   const tm=e.start&&(!multi||e.date===day)?`${e.start}<small>${e.end||''}</small>`:'<small>Journée</small>';
-  return `<div class="item" data-a="editEvent" data-id="${e.id}"><div class="evtime">${tm}</div><span class="evbar" style="background:${esc(color)}"></span><div class="grow"><div class="ttl">${esc(e.title)}</div><div class="meta">${e.place?`<a class="tag maplink" href="${mapsURL(e.place)}" target="_blank" rel="noopener">📍 ${esc(e.place)}</a>`:''}${c?`<span class="tag">${esc(c.name)}</span>`:''}${e.readonly?'<span class="tag">🔒</span>':''}${syncTag(e)}</div></div></div>`;
+  return `<div class="item" data-a="editEvent" data-id="${e.id}"><div class="evtime">${tm}</div><span class="evbar" style="background:${esc(color)}"></span><div class="grow oneline"><div class="ttl">${esc(evTitle(e))}</div><div class="meta">${e.place?`<a class="tag maplink" href="${mapsURL(e.place)}" target="_blank" rel="noopener">📍 ${esc(e.place)}</a>`:''}${e.readonly?'<span class="tag">🔒</span>':''}${syncTag(e)}</div></div></div>`;
+}
+// Répétition en version courte pour les capsules
+function recurShort(r){
+  const S0=parseD(r.date||today()), j=i=>JOURS[i].slice(0,3)+'.';
+  switch(r.recur){
+    case 'day':return 'chaque jour'; case 'weekdays':return 'lun→ven';
+    case 'weekly':return 'chaque '+JOURS[S0.getDay()].slice(0,3)+'.';
+    case 'week':return 'chaque '+(r.days&&r.days.length?r.days:[S0.getDay()]).slice().sort((a,b)=>((a+6)%7)-((b+6)%7)).map(j).join(' ');
+    case 'biweek':return '1 '+JOURS[S0.getDay()]+' sur 2';
+    case 'month':return 'le '+S0.getDate()+' du mois';
+    case 'year':return 'chaque année';
+    default:return recurLabel(r);
+  }
 }
 function remRow(r,day){
   const t=day||today(), d=remDone(r,t), late=r.recur==='none'&&!r.done&&r.date<t;
-  const rec=r.recur&&r.recur!=='none'?'🔁 '+recurLabel(r):'';
-  return `<div class="item ${d?'done':''}"><button class="chk round ${d?'on':''}" data-a="toggleRem" data-id="${r.id}" data-v="${t}" aria-label="Fait"></button><div class="grow" data-a="editRem" data-id="${r.id}"><div class="ttl">🔔 ${esc(r.title)}</div><div class="meta">${rec?`<span class="tag">${rec}</span>`:`<span class="tag ${late?'late':''}">📅 ${fmtDate(r.date)}</span>`}${r.gid?'<span class="tag ok">📲 alerte</span>':''}${r.time?`<span class="tag">🕐 ${r.time}</span>`:''}</div></div></div>`;
+  const rec=r.recur&&r.recur!=='none'?'↻ '+recurShort(r):'';
+  return `<div class="item ${d?'done':''}"><button class="chk round ${d?'on':''}" data-a="toggleRem" data-id="${r.id}" data-v="${t}" aria-label="Fait"></button><div class="grow oneline" data-a="editRem" data-id="${r.id}"><div class="ttl">🔔 ${esc(r.title)}</div><div class="meta">${r.time?`<span class="tag"><b>${r.time}</b></span>`:''}${rec?`<span class="tag">${rec}</span>`:(r.date===t?'':`<span class="tag ${late?'late':''}">📅 ${fmtDate(r.date)}</span>`)}${r.gid?'<span class="tag ok" title="Alerte sur le téléphone">📲</span>':''}</div></div></div>`;
 }
 const doneOn=(o,d)=>o.done&&o.doneAt&&iso(new Date(o.doneAt))===d;
 let jourOff=0;
@@ -1012,7 +1033,7 @@ function dayTimeline(t,isToday,sug){
     const PP=PALETTES[S.settings.palette], pc=PP?palPairs(PP)[B.indexOf(b)%palPairs(PP).length]:null;
     const c=b.k==='ev'?((S.settings.calendars.find(c=>c.id===b.o.calId)||{}).color||b.o.color||(pc?`linear-gradient(135deg,${pc[0]},${pc[1]})`:'')):'';
     const hh=Math.max(20,(b.e-b.s)*PX-2), one=hh<34;
-    h+=`<div class="tl-ev ${b.k} ${one?'one':''}" data-drag="${b.k==='ev'?'ev':'task'}" data-mode="t" data-d="${t}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='ev'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${y(b.s)}px;height:${hh}px;left:calc(44px + (100% - 48px)*${b.col}/${b.n});width:calc((100% - 48px)/${b.n} - 3px);${b.n>2?'padding:2px 4px;font-size:10.5px;':''}${c?`background:${esc(c)};`:''}"><b>${b.k==='task'?urgDot(b.o):''}${esc(b.o.title)}</b><small>${fromMin(b.s)}–${fromMin(Math.min(b.e,1439))}${b.k==='ev'&&b.o.place?' · 📍 '+esc(b.o.place):''}</small></div>`;
+    h+=`<div class="tl-ev ${b.k} ${one?'one':''}" data-drag="${b.k==='ev'?'ev':'task'}" data-mode="t" data-d="${t}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='ev'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${y(b.s)}px;height:${hh}px;left:calc(44px + (100% - 48px)*${b.col}/${b.n});width:calc((100% - 48px)/${b.n} - 3px);${b.n>2?'padding:2px 4px;font-size:10.5px;':''}${c?`background:${esc(c)};`:''}"><b>${b.k==='task'?urgDot(b.o):''}${esc(b.k==='task'?b.o.title:evTitle(b.o))}</b><small>${fromMin(b.s)}–${fromMin(Math.min(b.e,1439))}${b.k==='ev'&&b.o.place?' · 📍 '+esc(b.o.place):''}</small></div>`;
   }
   if(isToday&&nowM>=H0&&nowM<=H1) h+=`<div class="tl-now" style="top:${y(nowM)}px"></div>`;
   return (allDay.length?`<div class="list ${holidayOn(t)?'hol':''}" style="margin-bottom:10px">${allDay.map(e=>eventRow(e,t)).join('')}</div>`:'')+`<div class="tl ${holidayOn(t)?'hol':''}" style="height:${(H1-H0)*PX+6}px">${h}</div>`;
@@ -1095,18 +1116,19 @@ function folderOptions(sel,exclude=[]){
 }
 function tile(f){
   const n=countOpen(f.id), kids=S.folders.filter(x=>x.parentId===f.id);
-  return `<button class="tile" data-a="openFolder" data-id="${f.id}" style="background:${gradOf(f.color)}"><span class="ic">${esc(f.icon||'📁')}</span><span><b>${esc(f.name)}</b> <span data-a="toggleFolderFavorite" data-id="${f.id}" title="${f.favorite?'Retirer des favoris':'Ajouter aux favoris'}" aria-label="${f.favorite?'Retirer des favoris':'Ajouter aux favoris'}" style="font-size:18px;padding:3px">${f.favorite?'⭐':'☆'}</span><br><small>${n?n+' à faire':'À jour ✓'}</small></span>${kids.length?`<span class="pills">${kids.map(k=>`<span class="pill" data-a="openFolder" data-id="${k.id}">${esc(k.icon||'📁')} ${esc(k.name)}</span>`).join('')}</span>`:''}</button>`;
+  return `<button class="tile" data-a="openFolder" data-id="${f.id}" style="background:${gradOf(f.color)}"><span class="ic">${esc(f.icon||'📁')}</span><span><b>${esc(f.name)}</b>${S.settings.folderFav?` <span data-a="toggleFolderFavorite" data-id="${f.id}" title="${f.favorite?'Retirer des favoris':'Ajouter aux favoris'}" aria-label="${f.favorite?'Retirer des favoris':'Ajouter aux favoris'}" style="font-size:18px;padding:3px">${f.favorite?'⭐':'☆'}</span>`:''}<br><small>${n?n+' à faire':'À jour ✓'}</small></span>${kids.length?`<span class="pills">${kids.map(k=>`<span class="pill" data-a="openFolder" data-id="${k.id}">${esc(k.icon||'📁')} ${esc(k.name)}</span>`).join('')}</span>`:''}</button>`;
 }
 function itemRow(i){
   return `<div class="item todo-item ${i.done?'done':''} ${(i.steps&&i.steps.length)||(i.images&&i.images.length)||subAddFor==='item:'+i.id?'top':''}" data-id="${i.id}">${i.done?'':'<span class="handle" aria-label="Déplacer">⠿</span>'}<button class="chk round ${i.done?'on':''}" data-a="toggleItem" data-id="${i.id}" aria-label="${i.done?'Marquer comme non terminée':'Marquer comme terminée'}"></button><div class="grow" data-a="editItem" data-id="${i.id}"><div class="ttl">${i.lvl&&!i.done?`<span class="udot u-${i.lvl==='tres'?'tres':'urgent'}"></span>`:''}${linkify(esc(i.text))}</div>${subList(i,'item')}${i.images&&i.images.length?`<div class="thumbs">${i.images.map(id=>`<img data-img="${id}" data-a="viewImg" data-id="${id}" alt="">`).join('')}</div>`:''}</div><button class="icon-btn sm" data-a="moveItem" data-id="${i.id}" aria-label="Déplacer vers un dossier" title="Déplacer vers un dossier">📁↗</button>${i.done?'':subBtn(i,'item')}</div>`;
 }
+let notesSearchOn=false;
 VIEWS.todo=()=>{
   if(todoFolder&&!S.folders.find(f=>f.id===todoFolder)) todoFolder=null;
   const cur=todoFolder, path=folderPath(cur), folderSize=Math.max(80,Math.min(180,+S.settings.folderSize||112));
   let html=`<div class="crumbs"><button class="crumb ${cur?'':'cur'}" data-a="openFolder" data-id="">🏠 Accueil</button>${path.map((p,i)=>`<button class="crumb ${i===path.length-1?'cur':''}" data-a="openFolder" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>`;
   if(!cur&&recentTodoFolders.length){const recent=recentTodoFolders.map(id=>S.folders.find(f=>f.id===id)).filter(Boolean);if(recent.length)html+=`<section style="margin:10px 0 14px"><div class="sec">Récemment ouverts</div><div class="chips">${recent.map(f=>`<button class="chip" data-a="openFolder" data-id="${f.id}">${esc(f.icon||'📁')} ${esc(f.name)}</button>`).join('')}</div></section>`;}
-  if(!cur){const favs=S.folders.filter(f=>f.favorite);if(favs.length)html+=`<section style="margin:10px 0 14px"><div class="sec">⭐ Dossiers favoris <span class="n">${favs.length}</span></div><div class="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${favs.map(tile).join('')}</div></section>`;}
-  html+=`<div style="margin:10px 0"><input id="notesSearch" type="search" class="input" placeholder="🔍 Rechercher dans ce dossier…" aria-label="Rechercher dans les notes et sous-dossiers"></div>`;
+  if(!cur&&S.settings.folderFav){const favs=S.folders.filter(f=>f.favorite);if(favs.length)html+=`<section style="margin:10px 0 14px"><div class="sec">⭐ Dossiers favoris <span class="n">${favs.length}</span></div><div class="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${favs.map(tile).join('')}</div></section>`;}
+  if(notesSearchOn) html+=`<div style="margin:10px 0"><input id="notesSearch" type="search" class="input" placeholder="🔍 Rechercher dans ce dossier…" aria-label="Rechercher dans les notes et sous-dossiers"></div>`;
   const subs=S.folders.filter(f=>(f.parentId||null)===cur);
   const items=S.items.filter(i=>(i.folderId||null)===cur), open=items.filter(i=>!i.done), done=items.filter(i=>i.done);
   if(subs.length) html+=`<div class="tiles ${cur?'subfolder-tiles':''}" id="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${subs.map(tile).join('')}</div>`;
@@ -1115,11 +1137,11 @@ VIEWS.todo=()=>{
   if(done.length) html+=`<details class="donebox"><summary>${plural(done.length,'élément terminé','éléments terminés')}</summary><div class="list">${done.map(itemRow).join('')}</div><button class="btn sm ghost danger block" data-a="clearDone">Effacer les terminés</button></details>`;
   if(subs.length||open.length) html+=`<p class="small muted" style="text-align:center;margin-top:16px">Astuce : appui long sur un dossier, ou ⠿ sur un élément, pour réorganiser.</p>`;
   return {title:cur?path[path.length-1].name:'Notes',html,fab:'newItemQ',mic:'item',
-    actions:`<button class="icon-btn" data-a="exportNotesMenu" aria-label="Télécharger les notes" title="Télécharger">⬇️</button><button class="icon-btn" data-a="newFolder" aria-label="Nouveau dossier">📁＋</button>${cur?'<button class="icon-btn" data-a="editFolder" aria-label="Options du dossier">⋯</button>':''}`,
+    actions:`<button class="icon-btn ${notesSearchOn?'on':''}" data-a="notesSearchToggle" aria-label="Rechercher dans les notes" title="Rechercher">🔍</button><button class="icon-btn" data-a="exportNotesMenu" aria-label="Télécharger les notes" title="Télécharger">⬇️</button><button class="icon-btn" data-a="newFolder" aria-label="Nouveau dossier">📁＋</button>${cur?'<button class="icon-btn" data-a="editFolder" aria-label="Options du dossier">⋯</button>':''}`,
     after(){
       sortable($('#tiles'),'.tile',ids=>{reorder(S.folders,ids);save()});
       sortable($('#itemsList'),'.todo-item',ids=>{reorder(S.items,ids);save()});
-      const search=$('#notesSearch');
+      const search=$('#notesSearch'); if(search&&notesSearchOn) setTimeout(()=>search.focus(),50);
       if(search) search.addEventListener('input',()=>{
         const q=search.value.trim().toLocaleLowerCase('fr');
         $('#tiles')?.querySelectorAll('.tile').forEach(el=>el.style.display=el.textContent.toLocaleLowerCase('fr').includes(q)?'':'none');
@@ -1166,12 +1188,12 @@ function agendaWeekView(){
   cols.forEach(({d,B,allday})=>{
     const dd=parseD(d);
     head+=`<button class="wk-hd ${d===tod?'today':''} ${holidayOn(d)?'hol':''}" data-a="agendaDay" data-id="${d}" aria-label="${fmtLong(d)}"><small>${'LMMJVSD'[(dd.getDay()+6)%7]}</small><b>${dd.getDate()}</b></button>`;
-    allR+=`<div class="wk-allday">${allday.slice(0,2).map(it=>`<span class="gm-ev ${it.k==='t'?'task':''}" ${it.c?`style="background:${esc(it.c)}"`:''}>${esc(it.o.title)}</span>`).join('')}${allday.length>2?`<span class="gm-more">+${allday.length-2}</span>`:''}</div>`;
+    allR+=`<div class="wk-allday">${allday.slice(0,2).map(it=>`<span class="gm-ev ${it.k==='t'?'task':''}" ${it.c?`style="background:${esc(it.c)}"`:''}>${esc(it.k==='t'?it.o.title:evTitle(it.o))}</span>`).join('')}${allday.length>2?`<span class="gm-more">+${allday.length-2}</span>`:''}</div>`;
     let cluster=[],clEnd=-1; const colsEnd=[];
     const finish=()=>{const n=Math.max(1,...cluster.map(b=>b.col+1));cluster.forEach(b=>b.n=n);cluster=[];colsEnd.length=0};
     B.forEach(b=>{if(cluster.length&&b.s>=clEnd)finish();let c=colsEnd.findIndex(e=>e<=b.s);if(c<0){c=colsEnd.length;colsEnd.push(b.e)}else colsEnd[c]=b.e;b.col=c;cluster.push(b);clEnd=Math.max(clEnd,b.e)});
     if(cluster.length) finish();
-    const blocks=B.map(b=>b.k==='c'?`<div class="wk-ev cls" style="top:${(b.s-H0)*PX}px;height:${(b.e-b.s)*PX-2}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px)"><b>🏫</b><small>Classe</small></div>`:`<div class="wk-ev ${b.k==='t'?'task':''}" data-drag="${b.k==='t'?'task':'ev'}" data-mode="t" data-d="${d}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='e'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${(b.s-H0)*PX}px;height:${Math.max(10,(b.e-b.s)*PX-2)}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px);${b.c?'background:'+esc(b.c):''}"><b>${b.k==='t'?urgDot(b.o):''}${esc(b.o.title)}</b><small>${fromMin(b.s)}</small></div>`).join('');
+    const blocks=B.map(b=>b.k==='c'?`<div class="wk-ev cls" style="top:${(b.s-H0)*PX}px;height:${(b.e-b.s)*PX-2}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px)"><b>🏫</b><small>Classe</small></div>`:`<div class="wk-ev ${b.k==='t'?'task':''}" data-drag="${b.k==='t'?'task':'ev'}" data-mode="t" data-d="${d}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='e'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${(b.s-H0)*PX}px;height:${Math.max(10,(b.e-b.s)*PX-2)}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px);${b.c?'background:'+esc(b.c):''}"><b>${b.k==='t'?urgDot(b.o):''}${esc(b.k==='t'?b.o.title:evTitle(b.o))}</b><small>${fromMin(b.s)}</small></div>`).join('');
     body+=`<div class="wk-col ${holidayOn(d)?'hol':''}" data-tdrop="${d}" data-a="wkSlot" data-d="${d}" data-h0="${H0}" data-ppm="${PX}" style="height:${H}px">${hrs.map(m=>`<i class="wk-hr" style="top:${(m-H0)*PX}px"></i>`).join('')}${blocks}</div>`;
   });
   const groups=days.map(d=>{const L=agTasksOn(d);return L.length?agDayLabel(fmtLong(d),L.length)+`<div class="list">${L.map(taskRowLite).join('')}</div>`:''}).join('');
@@ -1187,7 +1209,7 @@ function agendaMonthView(){
   for(let i=0;i<lead;i++) cellA.push(['','<div class="gm-cell gm-blank"></div>']);
   for(let n=1;n<=dim;n++){
     const d=addDays(first,n-1), hol=holidayOn(d);
-    const items=[...eventsOn(d).map(e=>({t:e.title,c:calCol(e),tk:0,id:e.id})),...S.tasks.filter(x=>x.date===d&&!x.done).map(x=>({t:x.title,c:'',tk:1,id:x.id,o:x}))];
+    const items=[...eventsOn(d).map(e=>({t:evTitle(e),c:calCol(e),tk:0,id:e.id})),...S.tasks.filter(x=>x.date===d&&!x.done).map(x=>({t:x.title,c:'',tk:1,id:x.id,o:x}))];
     const shown=items.slice(0,3).map(it=>`<span class="gm-ev ${it.tk?'task':''}" data-drag="${it.tk?'task':'ev'}" data-mode="m" data-d="${d}" data-id="${it.id}" ${it.tk?'':`style="background:${esc(it.c)}"`}>${it.tk?urgDot(it.o):''}${esc(it.t)}</span>`).join('');
     const more=items.length>3?`<span class="gm-more">+${items.length-3}</span>`:'';
     cellA.push([d,`<button class="gm-cell ${d===t?'sel':''} ${hol?'hol':''}" data-a="agendaDay" data-id="${d}" data-tdrop="${d}" aria-label="${fmtLong(d)}"><span class="gm-num ${d===today()?'today':''}">${n}</span>${shown}${more}</button>`]);
@@ -1355,6 +1377,7 @@ SUBS.reglages=()=>{
   let html=sec('Apparence')+`<div class="card"><div class="fld"><span>Thème</span>${chips([['dark','🌙 Sombre'],['light','☀️ Clair'],['auto','📱 Auto']],s.theme,'setTheme')}</div>
   <div class="fld"><span>Palette de couleurs</span><div class="pals">${Object.entries(PALETTES).map(([k,P])=>`<button class="pal ${s.palette===k?'on':''}" data-a="setPalette" data-id="${k}" style="background:${P[document.documentElement.dataset.theme||'dark'].card2}"><span class="pdots">${Object.values(P.tabs).map(([a,b])=>`<i style="background:linear-gradient(135deg,${a},${b})"></i>`).join('')}</span><b>${P.name}</b></button>`).join('')}<button class="pal ${!PALETTES[s.palette]?'on':''}" data-a="setPalette" data-id="" style="background:var(--card2)"><span class="pdots"><i style="background:linear-gradient(135deg,var(--a1),var(--a2))"></i></span><b>Couleur unique</b></button></div></div>
   ${PALETTES[s.palette]?'':`<div class="fld"><span>Couleur d'accent : ${ACCENTS[s.accent][0]}</span>`}<div class="swatches" ${PALETTES[s.palette]?'style="display:none"':''}>${Object.entries(ACCENTS).map(([k,[l,a,b]])=>`<button class="acc ${s.accent===k?'on':''}" style="background:linear-gradient(135deg,${a},${b})" data-a="setAccent" data-id="${k}" aria-label="${l}"></button>`).join('')}</div>${PALETTES[s.palette]?'':'</div>'}
+  <div class="srow"><div class="grow">⭐ Dossiers favoris dans Notes<div class="small muted">Affiche une étoile sur chaque dossier pour l'épingler en haut de Notes.</div></div><input type="checkbox" class="sw" data-c="setting" data-f="folderFav" ${s.folderFav?'checked':''}></div>
   <div class="fld"><span>Taille des dossiers dans Notes</span><div class="range"><span class="small">Petit</span><input type="range" min="80" max="180" step="10" value="${Math.max(80,Math.min(180,+s.folderSize||112))}" data-r="folderSize" aria-label="Taille des dossiers"><b>${Math.max(80,Math.min(180,+s.folderSize||112))} px</b><span class="small">Grand</span></div><div class="small muted">Ajuste la taille des dossiers à l’accueil de Notes et des sous-dossiers. Les sous-dossiers restent carrés.</div></div>\n  <div class="fld"><span>Barre de navigation</span>${chips([['bottom','⬇️ En bas'],['top','⬆️ En haut']],s.navPos,'setNav')}</div>
   <div class="range"><span class="small">Hauteur de la barre</span><input type="range" min="-16" max="60" step="2" value="${+s.navLift||0}" data-r="navLift" aria-label="Hauteur"><b>${+s.navLift||0} px</b></div>
   <div class="small muted" style="margin-top:4px">Remontez la barre si les boutons de votre téléphone la cachent.</div></div>`;
@@ -2566,6 +2589,7 @@ const A={
       S.settings.lastBackup=Date.now(); save(); render(); toast('💾 Sauvegarde téléchargée');
     }catch(e){ toast('⚠️ Export impossible : '+e.message); }
   },
+  notesSearchToggle(){ notesSearchOn=!notesSearchOn; render(); },
   exportNotesMenu(){
     openSheet('Télécharger les notes',`<p class="muted small">Choisissez le format du fichier à télécharger.</p><div class="list"><button class="btn block" data-a="exportNotes" data-v="txt">📄 Télécharger en texte (.txt)</button><button class="btn block" data-a="exportNotes" data-v="pdf">📕 Télécharger en PDF (.pdf)</button></div>`);
   },
