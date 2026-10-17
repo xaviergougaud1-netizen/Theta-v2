@@ -470,7 +470,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.27.0';
+const VERSION='3.27.1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -2168,10 +2168,19 @@ function mergeRemote(rem){
   return n;
 }
 async function driveSync(){
-  let id=S.settings.syncFileId, rem=null;
-  if(!id){const q=new URLSearchParams({q:`name='${SYNC_NAME}' and trashed=false`,orderBy:'modifiedTime desc',fields:'files(id)'});const r=await gfetch(`${DRIVE}/files?${q}`);id=r.files&&r.files[0]&&r.files[0].id}
+  let id=S.settings.syncFileId, rem=null, n=0, extra=[];
+  // Un seul fichier de synchro pour tous les appareils : s'il en existe plusieurs (un par appareil ou par version),
+  // on fusionne leur contenu dans le plus ancien (choix identique sur tous les appareils), puis les doublons partent à la corbeille (récupérables 30 jours).
+  if(!id||!S.settings.syncDedupAt||Date.now()-S.settings.syncDedupAt>30*60e3){
+    const q=new URLSearchParams({q:`name='${SYNC_NAME}' and trashed=false`,orderBy:'createdTime',fields:'files(id,createdTime)'});
+    const list=((await gfetch(`${DRIVE}/files?${q}`))||{}).files||[];
+    if(list.length) id=list[0].id;
+    extra=list.filter(f=>f.id!==id);
+    for(const f of extra){ try{ const r=await gfetch(`${DRIVE}/files/${enc(f.id)}?alt=media`); if(r&&r.app==='theta-sync') n+=mergeRemote(r); }catch(e){ if(e.message==='auth') throw e; } }
+    S.settings.syncDedupAt=Date.now();
+  }
   if(id){try{rem=await gfetch(`${DRIVE}/files/${enc(id)}?alt=media`)}catch(e){if(e.status===404)id=null;else throw e}}
-  const n=rem&&rem.app==='theta-sync'?mergeRemote(rem):0;
+  n+=rem&&rem.app==='theta-sync'?mergeRemote(rem):0;
   stamp(); const pay=syncPayload(), body=JSON.stringify(pay);
   const same=rem&&rem.app==='theta-sync'&&JSON.stringify({...rem,at:0})===JSON.stringify({...pay,at:0});
   if(!same){
@@ -2183,6 +2192,7 @@ async function driveSync(){
       id=r.id;
     }
   }
+  for(const f of extra){ try{ await gfetch(`${DRIVE}/files/${enc(f.id)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})}); }catch(e){ if(e.message==='auth') throw e; } }
   S.settings.syncFileId=id; S.settings.lastDriveSync=Date.now(); save();
   return n;
 }
