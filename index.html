@@ -126,7 +126,8 @@ html[data-theme=dark] .tag.maplink{color:color-mix(in srgb,var(--a1) 55%,white)}
 .crumb{flex:none;border:0;border-radius:999px;padding:6px 12px;background:var(--card2);font-size:13.5px;font-weight:600}
 .crumb.cur{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-bottom:14px}
-.tile{position:relative;aspect-ratio:1;min-width:0;overflow:hidden;border-radius:18px;padding:12px;min-height:0;color:#fff;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.25);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border:0;text-align:left}
+.tile{position:relative;min-width:0;overflow:hidden;border-radius:18px;padding:12px;min-height:0;color:#fff;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.25);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border:0;text-align:left}
+.tiles.subfolder-tiles .tile{aspect-ratio:1;min-height:112px}
 .tile b{font-size:15.5px;line-height:1.2}
 .tile small{opacity:.88;font-size:12.5px}
 .tile .ic{font-size:22px}
@@ -274,6 +275,8 @@ body.vjour #main{touch-action:pan-y}
 .gm-cell{min-height:84px;min-width:0;overflow:hidden;display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:3px 2px;background:none;border:0;border-right:1px solid var(--card3);border-bottom:1px solid var(--card3);color:var(--text);font:inherit;text-align:left;cursor:pointer}
 .gm-blank{cursor:default}
 .gm-cell.hol{background:color-mix(in srgb,var(--a1) 8%,transparent)}
+.tl.hol{background:color-mix(in srgb,var(--a1) 10%,transparent);border-radius:12px}
+.list.hol{background:color-mix(in srgb,var(--a1) 8%,transparent);border-radius:12px;padding:6px}
 .wk-hd.hol{background:color-mix(in srgb,var(--a1) 12%,transparent);border-radius:8px}
 .wk-col.hol{background:color-mix(in srgb,var(--a1) 5%,transparent)}
 .gm-cell.sel{background:color-mix(in srgb,var(--a1) 18%,transparent)}
@@ -466,7 +469,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.20.0';
+const VERSION='3.21.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -984,7 +987,7 @@ function dayTimeline(t,isToday,sug){
     h+=`<div class="tl-ev ${b.k} ${one?'one':''}" data-drag="${b.k==='ev'?'ev':'task'}" data-mode="t" data-d="${t}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='ev'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${y(b.s)}px;height:${hh}px;left:calc(44px + (100% - 48px)*${b.col}/${b.n});width:calc((100% - 48px)/${b.n} - 3px);${b.n>2?'padding:2px 4px;font-size:10.5px;':''}${c?`background:${esc(c)};`:''}"><b>${b.k==='task'?urgDot(b.o):''}${esc(b.o.title)}</b><small>${fromMin(b.s)}–${fromMin(Math.min(b.e,1439))}${b.k==='ev'&&b.o.place?' · 📍 '+esc(b.o.place):''}</small></div>`;
   }
   if(isToday&&nowM>=H0&&nowM<=H1) h+=`<div class="tl-now" style="top:${y(nowM)}px"></div>`;
-  return (allDay.length?`<div class="list" style="margin-bottom:10px">${allDay.map(e=>eventRow(e,t)).join('')}</div>`:'')+`<div class="tl" style="height:${(H1-H0)*PX+6}px">${h}</div>`;
+  return (allDay.length?`<div class="list ${holidayOn(t)?'hol':''}" style="margin-bottom:10px">${allDay.map(e=>eventRow(e,t)).join('')}</div>`:'')+`<div class="tl ${holidayOn(t)?'hol':''}" style="height:${(H1-H0)*PX+6}px">${h}</div>`;
 }
 VIEWS.jour=()=>{
   const T=today(), t=addDays(T,jourOff), isToday=jourOff===0, now=new Date(), h=now.getHours(), tm=t.slice(0,7);
@@ -1081,7 +1084,7 @@ VIEWS.todo=()=>{
   let html=`<div class="crumbs"><button class="crumb ${cur?'':'cur'}" data-a="openFolder" data-id="">🏠 Accueil</button>${path.map((p,i)=>`<button class="crumb ${i===path.length-1?'cur':''}" data-a="openFolder" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>`;
   const subs=S.folders.filter(f=>(f.parentId||null)===cur);
   const items=S.items.filter(i=>(i.folderId||null)===cur), open=items.filter(i=>!i.done), done=items.filter(i=>i.done);
-  if(subs.length) html+=`<div class="tiles" id="tiles">${subs.map(tile).join('')}</div>`;
+  if(subs.length) html+=`<div class="tiles ${cur?'subfolder-tiles':''}" id="tiles">${subs.map(tile).join('')}</div>`;
   if(!subs.length&&!items.length) html+=empty('📝','Rien ici pour l\'instant','Écrivez, dictez, prenez une photo ou créez un sous-dossier avec 📁+.');
   if(open.length) html+=`<div class="list" id="itemsList">${open.map(itemRow).join('')}</div>`;
   if(done.length) html+=`<details class="donebox"><summary>${plural(done.length,'élément terminé','éléments terminés')}</summary><div class="list">${done.map(itemRow).join('')}</div><button class="btn sm ghost danger block" data-a="clearDone">Effacer les terminés</button></details>`;
