@@ -1106,7 +1106,7 @@ VIEWS.todo=()=>{
   let html=`<div class="crumbs"><button class="crumb ${cur?'':'cur'}" data-a="openFolder" data-id="">🏠 Accueil</button>${path.map((p,i)=>`<button class="crumb ${i===path.length-1?'cur':''}" data-a="openFolder" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>`;
   if(!cur&&recentTodoFolders.length){const recent=recentTodoFolders.map(id=>S.folders.find(f=>f.id===id)).filter(Boolean);if(recent.length)html+=`<section style="margin:10px 0 14px"><div class="sec">Récemment ouverts</div><div class="chips">${recent.map(f=>`<button class="chip" data-a="openFolder" data-id="${f.id}">${esc(f.icon||'📁')} ${esc(f.name)}</button>`).join('')}</div></section>`;}
   if(!cur){const favs=S.folders.filter(f=>f.favorite);if(favs.length)html+=`<section style="margin:10px 0 14px"><div class="sec">⭐ Dossiers favoris <span class="n">${favs.length}</span></div><div class="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${favs.map(tile).join('')}</div></section>`;}
-  html+=`<div style="margin:10px 0"><input id="notesSearch" type="search" class="input" placeholder="🔎 Rechercher dans ce dossier…" aria-label="Rechercher dans les notes et sous-dossiers"></div>`;
+  html+=`<div style="margin:10px 0"><input id="notesSearch" type="search" class="input" placeholder="🔍 Rechercher dans ce dossier…" aria-label="Rechercher dans les notes et sous-dossiers"></div>`;
   const subs=S.folders.filter(f=>(f.parentId||null)===cur);
   const items=S.items.filter(i=>(i.folderId||null)===cur), open=items.filter(i=>!i.done), done=items.filter(i=>i.done);
   if(subs.length) html+=`<div class="tiles ${cur?'subfolder-tiles':''}" id="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${subs.map(tile).join('')}</div>`;
@@ -1535,7 +1535,7 @@ function ideaSheet(x){
   sheetImgs=[...((x&&x.images)||[])];
   openSheet(isNew?'Nouvelle idée':'Modifier l\'idée',
     fld('Type',seg('type',Object.entries(LIBT).map(([k,[i,l]])=>[k,i+' '+l]),v.type))+fld('Titre',inp('title',v.title,'text','required autofocus'))+
-    `<div class="bookfind"><button type="button" class="btn sm ghost" data-a="bookSearch">🔎 Chercher ce titre</button>${'BarcodeDetector' in window?`<button type="button" class="btn sm ghost" data-a="scanIsbn">📷 Code-barres</button>`:''}</div>`+
+    `<div class="bookfind"><button type="button" class="btn sm ghost" data-a="bookSearch">🔍 Chercher ce titre</button>${'BarcodeDetector' in window?`<button type="button" class="btn sm ghost" data-a="scanIsbn">📷 Code-barres</button>`:''}</div>`+
     fld('Ou des idées par genre',`<div class="genres">${GENRES.map(([l,q])=>`<button type="button" class="chip" data-a="bookGenre" data-id="${esc(q)}">${l}</button>`).join('')}</div>`)+
     `<div id="bookRes" class="bookres"></div>`+
     fld('Conseillé par / auteur / note',inp('note',v.note))+fld('Photo (couverture…)',imgBoxHTML(isNew?'title':'')),
