@@ -2484,7 +2484,8 @@ const A={
       S.settings.lastBackup=Date.now(); save(); render(); toast('💾 Sauvegarde téléchargée');
     }catch(e){ toast('⚠️ Export impossible : '+e.message); }
   },
-  exportNotes(format){
+  exportNotes(format,el){
+    format=el?.dataset?.v||format;
     const cur=todoFolder, path=folderPath(cur), title=cur?(path[path.length-1]?.name||'Notes'):'Mes notes';
     const items=S.items.filter(x=>(x.folderId||null)===cur);
     const folders=S.folders.filter(x=>(x.parentId||null)===cur);
