@@ -754,7 +754,8 @@ function render(){
 }
 
 /* ---------- Jour ---------- */
-function eventsOn(d){return S.events.filter(e=>e.date===d||(e.endDate&&e.date<d&&e.endDate>=d)).sort(byTime)}
+const isSchoolHolidayEvent=e=>/vacances scolaires|vacances de (?:la )?(?:toussaint|no[eë]l|hiver|printemps|[eé]t[eé])/i.test(e?.title||'');
+function eventsOn(d){return S.events.filter(e=>!isSchoolHolidayEvent(e)&&(e.date===d||(e.endDate&&e.date<d&&e.endDate>=d))).sort(byTime)}
 const BYDAY=['SU','MO','TU','WE','TH','FR','SA'];
 const remG=r=>r.gsync===undefined||r.gsync===null?!!S.settings.pushReminders:!!r.gsync;
 const RREM=[['none','Une seule fois'],['day','Chaque jour'],['weekdays','Du lundi au vendredi'],['weekly','Toutes les semaines'],['week','Certains jours de la semaine'],['biweek','Toutes les 2 semaines'],['month','Chaque mois (même date)'],['lastwork','Dernier jour ouvré du mois'],['lastfriday','Dernier vendredi du mois'],['schoolfriday','Dernier vendredi de la période scolaire'],['schoolstart','À chaque rentrée scolaire'],['schoolreturn','À chaque retour de vacances'],['year','Chaque année']];
@@ -1213,7 +1214,7 @@ VIEWS.agenda=()=>{
   }
   const t=today(), from=agendaPast?addDays(t,-30):t, to=addDays(t,90), days={};
   const add=(d,o)=>(days[d]=days[d]||[]).push(o);
-  S.events.forEach(e=>{let d=e.date,g=0;const end=e.endDate||e.date;while(d<=end&&g++<62){if(d>=from&&d<=to)add(d,{k:'e',o:e,s:e.start&&(d===e.date)?e.start:'00:00'});d=addDays(d,1)}});
+  S.events.filter(e=>!isSchoolHolidayEvent(e)).forEach(e=>{let d=e.date,g=0;const end=e.endDate||e.date;while(d<=end&&g++<62){if(d>=from&&d<=to)add(d,{k:'e',o:e,s:e.start&&(d===e.date)?e.start:'00:00'});d=addDays(d,1)}});
   S.tasks.filter(x=>x.date&&x.time&&!x.done&&x.date>=from&&x.date<=to).forEach(x=>add(x.date,{k:'t',o:x,s:x.time}));
   const s=S.settings, pend=S.events.filter(e=>e.sync==='pending').length+S.tasks.filter(x=>x.sync==='pending').length+S.syncDeletes.length;
   let html=`<div style="margin-bottom:12px">${agendaModeChips()}</div>`;
