@@ -1102,7 +1102,7 @@ function tile(f){
   return `<button class="tile" data-a="openFolder" data-id="${f.id}" style="background:${gradOf(f.color)}"><span class="ic">${esc(f.icon||'📁')}</span><span><b>${esc(f.name)}</b><br><small>${n?n+' à faire':'À jour ✓'}</small></span>${kids.length?`<span class="pills">${kids.map(k=>`<span class="pill" data-a="openFolder" data-id="${k.id}">${esc(k.icon||'📁')} ${esc(k.name)}</span>`).join('')}</span>`:''}</button>`;
 }
 function itemRow(i){
-  return `<div class="item todo-item ${i.done?'done':''} ${(i.steps&&i.steps.length)||(i.images&&i.images.length)||subAddFor==='item:'+i.id?'top':''}" data-id="${i.id}">${i.done?'':'<span class="handle" aria-label="Déplacer">⠿</span>'}<button class="chk round ${i.done?'on':''}" data-a="toggleItem" data-id="${i.id}"></button><div class="grow" data-a="editItem" data-id="${i.id}"><div class="ttl">${i.lvl&&!i.done?`<span class="udot u-${i.lvl==='tres'?'tres':'urgent'}"></span>`:''}${linkify(esc(i.text))}</div>${subList(i,'item')}${i.images&&i.images.length?`<div class="thumbs">${i.images.map(id=>`<img data-img="${id}" data-a="viewImg" data-id="${id}" alt="">`).join('')}</div>`:''}</div>${i.done?'':subBtn(i,'item')}</div>`;
+  return `<div class="item todo-item ${i.done?'done':''} ${(i.steps&&i.steps.length)||(i.images&&i.images.length)||subAddFor==='item:'+i.id?'top':''}" data-id="${i.id}">${i.done?'':'<span class="handle" aria-label="Déplacer">⠿</span>'}<button class="chk round ${i.done?'on':''}" data-a="toggleItem" data-id="${i.id}"></button><div class="grow" data-a="editItem" data-id="${i.id}"><div class="ttl">${i.lvl&&!i.done?`<span class="udot u-${i.lvl==='tres'?'tres':'urgent'}"></span>`:''}${linkify(esc(i.text))}</div>${subList(i,'item')}${i.images&&i.images.length?`<div class="thumbs">${i.images.map(id=>`<img data-img="${id}" data-a="viewImg" data-id="${id}" alt="">`).join('')}</div>`:''}</div><button class="icon-btn sm" data-a="moveItem" data-id="${i.id}" aria-label="Déplacer vers un dossier" title="Déplacer vers un dossier">📁↗</button>${i.done?'':subBtn(i,'item')}</div>`;
 }
 VIEWS.todo=()=>{
   if(todoFolder&&!S.folders.find(f=>f.id===todoFolder)) todoFolder=null;
@@ -2476,6 +2476,7 @@ const A={
   },
   toggleItem(id){ const it=S.items.find(i=>i.id===id); if(!it) return; it.done=!it.done; it.doneAt=it.done?Date.now():null; save(); render(); },
   editItem(id){ const it=S.items.find(i=>i.id===id); if(it) itemSheet(it); },
+  moveItem(id){const it=S.items.find(i=>i.id===id);if(!it)return;openSheet('Déplacer la note',fld('Destination',`<select name="folderId">${folderOptions(it.folderId)}</select>`),{onSave(fd){const dest=fd.folderId||null;if(dest===(it.folderId||null)){closeSheet();return false;}it.folderId=dest;save();render();toast('📁 Note déplacée');}});},
   clearDone(){ const L=S.items.filter(i=>(i.folderId||null)===todoFolder&&i.done); if(!confirm(`Effacer ${plural(L.length,'élément terminé','éléments terminés')} ?`)) return; L.forEach(i=>(i.images||[]).forEach(id=>IDB.del(id).catch(()=>{}))); S.items=S.items.filter(i=>!L.includes(i)); save(); render(); },
   // Notes
   mic(id,el){ if(recOn) micStop(); else micStart(el.dataset.v||(sub==='notes'?'notes':'jour')); },
