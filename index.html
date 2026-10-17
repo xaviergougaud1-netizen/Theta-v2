@@ -470,7 +470,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.24.0';
+const VERSION='3.25.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -1107,7 +1107,7 @@ VIEWS.todo=()=>{
   if(done.length) html+=`<details class="donebox"><summary>${plural(done.length,'élément terminé','éléments terminés')}</summary><div class="list">${done.map(itemRow).join('')}</div><button class="btn sm ghost danger block" data-a="clearDone">Effacer les terminés</button></details>`;
   if(subs.length||open.length) html+=`<p class="small muted" style="text-align:center;margin-top:16px">Astuce : appui long sur un dossier, ou ⠿ sur un élément, pour réorganiser.</p>`;
   return {title:cur?path[path.length-1].name:'Notes',html,fab:'newItemQ',mic:'item',
-    actions:`<button class="icon-btn" data-a="exportNotes" data-v="txt" aria-label="Exporter en texte">TXT</button><button class="icon-btn" data-a="exportNotes" data-v="pdf" aria-label="Exporter en PDF">PDF</button><button class="icon-btn" data-a="newFolder" aria-label="Nouveau dossier">📁+</button>${cur?'<button class="icon-btn" data-a="editFolder" aria-label="Options du dossier">⋯</button>':''}`,
+    actions:`<button class="icon-btn" data-a="exportNotesMenu" aria-label="Télécharger les notes" title="Télécharger">⬇️</button><button class="icon-btn" data-a="newFolder" aria-label="Nouveau dossier">📁+</button>${cur?'<button class="icon-btn" data-a="editFolder" aria-label="Options du dossier">⋯</button>':''}`,
     after(){
       sortable($('#tiles'),'.tile',ids=>{reorder(S.folders,ids);save()});
       sortable($('#itemsList'),'.todo-item',ids=>{reorder(S.items,ids);save()});
@@ -2504,6 +2504,9 @@ const A={
       setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
       S.settings.lastBackup=Date.now(); save(); render(); toast('💾 Sauvegarde téléchargée');
     }catch(e){ toast('⚠️ Export impossible : '+e.message); }
+  },
+  exportNotesMenu(){
+    openSheet('Télécharger les notes',`<p class="muted small">Choisissez le format du fichier à télécharger.</p><div class="list"><button class="btn block" data-a="exportNotes" data-v="txt">📄 Télécharger en texte (.txt)</button><button class="btn block" data-a="exportNotes" data-v="pdf">📕 Télécharger en PDF (.pdf)</button></div>`);
   },
   exportNotes(format,el){
     format=el?.dataset?.v||format;
