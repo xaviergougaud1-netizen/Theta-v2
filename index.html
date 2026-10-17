@@ -464,7 +464,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.14.0';
+const VERSION='3.15.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -1022,6 +1022,7 @@ VIEWS.jour=()=>{
   if(late.length||lateR.length) html+=sec('En retard',late.length+lateR.length)+`<div class="card agcard"><div class="list">${late.map(taskRowLite).join('')}${lateR.map(remRow).join('')}</div></div>`;
   html+=sec('Ma journée')+dayTimeline(t,isToday,sug);
   if(sug.length>1) html+=`<button class="btn sm primary block" data-a="planAll" data-d="${t}" style="margin-top:0">✨ Caser automatiquement ${plural(sug.length,'tâche')}</button>`;
+  if(isToday&&S.tasks.some(x=>x.date===t&&x.time&&!x.done&&toMin(x.time)>h*60+now.getMinutes())) html+=`<button class="btn sm block" data-a="replanDay" data-d="${t}" style="margin-top:6px">🔄 Réorganiser le reste de la journée</button>`;
   if(monthT.length) html+=sec('🗓️ Ce mois-ci · '+fmtMonth(tm),monthT.length)+taskCard(monthT);
   if(isToday&&S.habits.length) html+=sec('Habitudes')+`<div class="hchips">${S.habits.map(hb=>`<button class="chip ${hb.log[t]?'on':''}" data-a="habitDay" data-id="${hb.id}" data-v="${t}">${esc(hb.emoji||'⭐')} ${esc(hb.name)}</button>`).join('')}</div>`;
   if(nAcc) html+=sec(isToday?'Accompli aujourd\'hui':'Accompli',nAcc)+`<div class="list">${accT.map(taskRow).join('')}${accR.map(r=>remRow(r,t)).join('')}${accI.map(itemDoneRow).join('')}</div><p class="small muted" style="text-align:center;margin:8px 0 0">Touchez une coche pour annuler.</p>`;
@@ -2335,6 +2336,19 @@ const A={
   toggleDay(id){ const[k,n]=id.split(':'), key=k==='class'?'classDays':'directionDays', v=+n, arr=[...(S.settings[key]||[])], i=arr.indexOf(v); if(i<0)arr.push(v); else arr.splice(i,1); S.settings[key]=arr.sort(); save(); render(); },
   plan(id,el){ const x=S.tasks.find(x=>x.id===id); if(!x) return; x.date=el.dataset.d||today(); x.time=el.dataset.v; markPending(x,'task'); save(); render(); toast('🗓️ Planifiée à '+x.time); },
   planAll(id,el){ const d=(el&&el.dataset.d)||today(), sg=suggest(d); pendingPlan=sg.filter(p=>!p.burst).map(p=>({task:p.task,date:d,start:p.start,end:p.end})); A.showPlan(d); },
+  replanDay(id,el){
+    const d=(el&&el.dataset.d)||today(), now=new Date(), nowM=now.getHours()*60+now.getMinutes();
+    const shifted=S.tasks.filter(x=>x.date===d&&x.time&&!x.done&&toMin(x.time)>nowM);
+    if(!shifted.length){toast('Aucune tâche future à réorganiser');return;}
+    const saved=shifted.map(x=>[x,x.time]);
+    try{
+      shifted.forEach(x=>{x.time=''});
+      const sg=suggest(d).filter(p=>!p.burst);
+      pendingPlan=sg.map(p=>({task:p.task,date:d,start:p.start,end:p.end}));
+    } finally { saved.forEach(([x,time])=>{x.time=time}); }
+    if(!pendingPlan.length){toast('Aucun créneau suffisant pour proposer un nouveau planning');return;}
+    A.showPlan(d);
+  },
   // Agenda
   newEvent(){ eventSheet(null); },
   editEvent(id){ const e=S.events.find(e=>e.id===id); if(e) eventSheet(e); },
