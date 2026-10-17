@@ -464,7 +464,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.17.0';
+const VERSION='3.18.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -2528,6 +2528,21 @@ function navUp(){
   if(sub){sub=null;render();return}
   if(view==='todo'&&todoFolder){const f=S.folders.find(f=>f.id===todoFolder);todoFolder=f?f.parentId||null:null;render();return}
 }
+
+/* Enregistrer une note avec un double appui rapide sur Entrée */
+let noteEnterAt=0;
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||e.isComposing||e.shiftKey||e.ctrlKey||e.altKey||e.metaKey)return;
+  const t=e.target;
+  if(!(t instanceof HTMLTextAreaElement)||t.name!=='text'||!t.closest('#shForm'))return;
+  const heading=$('#sheet .sh-head h2')?.textContent||'';
+  if(heading!=='Note'&&heading!=='Nouvelle note')return;
+  const now=Date.now();
+  if(now-noteEnterAt<500){
+    e.preventDefault();noteEnterAt=0;
+    const form=$('#shForm');if(form)form.requestSubmit();
+  }else{noteEnterAt=now;}
+},true);
 
 /* ================= Écouteurs globaux ================= */
 document.addEventListener('click',e=>{
