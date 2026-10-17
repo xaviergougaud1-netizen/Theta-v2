@@ -1572,11 +1572,43 @@ async function scanIsbnFile(f){
     toast('📖 '+title);
   }catch(e){toast('⚠️ Scan impossible : '+e.message)}
 }
-const FOLDER_ICONS=['📁','📚','🏫','🧑‍🏫','🗓️','🛒','🔨','💡','🎯','⭐','❤️','🏠','🎨','🎵','⚽','🌳','✈️','🍎','📝','💼','🧪','🌍','🔔','📌','🧠','🎁','💰','🩺','🚲','🔬','📷'];
+const FOLDER_ICONS=['📁','📂','🗂️','📚','📖','✏️','📝','📄','📋','🏫','🧑‍🏫','👩‍🏫','👨‍🏫','🗓️','📅','⏰','🔔','📌','✅','🎯','⭐','❤️','🏠','🛠️','🔨','💡','🎨','🎵','🎭','⚽','🏃','🌳','🌱','🌍','✈️','🚲','🛒','🍎','🥗','💼','💰','🩺','🧪','🔬','📷','💻','📱','🔑','🎁','🧠','🧘','🐾','🌈','☀️','🌧️','🏆','🤝','🧹','🧺','🚗','🏖️'];
+function suggestedFolderIcon(name){
+ const n=(name||'').toLocaleLowerCase('fr');
+ const rules=[
+  [/école|classe|élève|enseign|pédagog|cm1|cm2|maternelle/,'🏫'],
+  [/réunion|agenda|calendrier|planning|rendez-vous/,'🗓️'],
+  [/tâche|todo|à faire|priorit|objectif/,'🎯'],
+  [/note|écrit|dictée|rédaction|lecture|français|grammaire|orthographe/,'📝'],
+  [/math|calcul|nombre|géométr/,'🔢'],
+  [/science|expérience|vivant|recherche/,'🧪'],
+  [/art|dessin|peinture|création/,'🎨'],
+  [/musique|chant/,'🎵'],
+  [/sport|eps|football|course|marathon/,'⚽'],
+  [/jardin|plante|nature|environnement/,'🌱'],
+  [/voyage|vacance|sortie|visite/,'✈️'],
+  [/budget|argent|finance|achat|courses/,'💰'],
+  [/santé|médecin|soin/,'🩺'],
+  [/photo|image/,'📷'],
+  [/informatique|ordinateur|numérique|application|code/,'💻'],
+  [/maison|logement|travaux|bricolage/,'🏠'],
+  [/famille|enfant|anniversaire|cadeau/,'❤️'],
+  [/sport|vélo|cyclisme/,'🚲'],
+  [/ménage|nettoyage|entretien/,'🧹'],
+  [/projet|travail|profession|administratif/,'💼']
+ ];
+ return (rules.find(([re])=>re.test(n))||[])[1]||'📁';
+}
+function applySuggestedFolderIcon(){
+ const name=document.querySelector('#sheetWrap [name="name"]')?.value||'';
+ const icon=suggestedFolderIcon(name);
+ const input=[...document.querySelectorAll('#sheetWrap input[name="icon"]')].find(x=>x.value===icon);
+ if(input){input.checked=true;input.dispatchEvent(new Event('change',{bubbles:true}));}
+}
 function folderSheet(f,parentId){
   const isNew=!f, v=f||{name:'',color:ALL_GRADS[Math.floor(Math.random()*ALL_GRADS.length)],icon:'📁',parentId};
   openSheet(isNew?'Nouveau dossier':'Dossier « '+f.name+' »',
-    fld('Nom',inp('name',v.name,'text','required autofocus'))+fld('Icône',`<div class="swatches iconpick">${[...new Set([v.icon||'📁',...FOLDER_ICONS])].map(ic=>`<label><input type="radio" name="icon" value="${esc(ic)}" ${ic===(v.icon||'📁')?'checked':''}><span>${ic}</span></label>`).join('')}</div>`)+
+    fld('Nom',inp('name',v.name,'text','required autofocus'))+fld('Icône',`<button type="button" class="btn sm ghost" onclick="applySuggestedFolderIcon()">✨ Icône conseillée selon le nom</button><div class="swatches iconpick">${[...new Set([v.icon||'📁',...FOLDER_ICONS])].map(ic=>`<label title="${ic}"><input type="radio" name="icon" value="${esc(ic)}" ${ic===(v.icon||'📁')?'checked':''}><span>${ic}</span></label>`).join('')}</div>`)+
     fld('Couleurs principales',`<div class="swatches">${FOLDER_COLOR_FAMILIES.map((f,i)=>`<label title="${f.name}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE}" onchange="showFolderShades(${i})" ${f.main===gradOf(v.color)?'checked':''}><span style="background:${f.main}"></span></label>`).join('')}</div>`)+fld('Déclinaisons de la couleur choisie',`<div>${FOLDER_COLOR_FAMILIES.map((f,i)=>`<div class="swatches folder-shade-group" style="display:${i===Math.max(0,Math.floor(Math.max(0,ALL_GRADS.indexOf(gradOf(v.color)))/FOLDER_FAMILY_SIZE))?'flex':'none'}" data-family="${i}">${f.shades.map((g,j)=>`<label title="${f.name} — déclinaison ${j+1}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE+j+1}" ${g===gradOf(v.color)?'checked':''}><span style="background:${g}"></span></label>`).join('')}${i===0&&ALL_GRADS.indexOf(gradOf(v.color))>=FOLDER_COLOR_FAMILIES.length*FOLDER_FAMILY_SIZE?`<label title="Ancienne couleur conservée"><input type="radio" name="color" value="${ALL_GRADS.indexOf(gradOf(v.color))}" checked><span style="background:${gradOf(v.color)}"></span></label>`:''}</div>`).join('')}</div>`)+fld('Dans le dossier',`<select name="parentId">${folderOptions(v.parentId,f?[f.id,...descendants(f.id)]:[])}</select>`),
     {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
      onDelete:isNew?null:()=>{
