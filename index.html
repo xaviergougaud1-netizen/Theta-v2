@@ -689,6 +689,7 @@ async function applyBg(){
 
 /* ================= État d'interface ================= */
 let taskCat='all', view='jour', sub=null, todoFolder=null, taskFilter='todo', libTab='ideas', libFilter='all', loanGroup='person', iconEdit=null, fontOpen=false, agendaPast=false, showLoansDone=false;
+let recentTodoFolders=[];
 
 /* ================= Rendu ================= */
 const VIEWS={}, SUBS={};
@@ -1108,6 +1109,7 @@ VIEWS.todo=()=>{
   if(todoFolder&&!S.folders.find(f=>f.id===todoFolder)) todoFolder=null;
   const cur=todoFolder, path=folderPath(cur), folderSize=Math.max(80,Math.min(180,+S.settings.folderSize||112));
   let html=`<div class="crumbs"><button class="crumb ${cur?'':'cur'}" data-a="openFolder" data-id="">🏠 Accueil</button>${path.map((p,i)=>`<button class="crumb ${i===path.length-1?'cur':''}" data-a="openFolder" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>`;
+  if(!cur&&recentTodoFolders.length){const recent=recentTodoFolders.map(id=>S.folders.find(f=>f.id===id)).filter(Boolean);if(recent.length)html+=`<section style="margin:10px 0 14px"><div class="sec">Récemment ouverts</div><div class="chips">${recent.map(f=>`<button class="chip" data-a="openFolder" data-id="${f.id}">${esc(f.icon||'📁')} ${esc(f.name)}</button>`).join('')}</div></section>`;}
   html+=`<div style="margin:10px 0"><input id="notesSearch" type="search" class="input" placeholder="🔎 Rechercher dans ce dossier…" aria-label="Rechercher dans les notes et sous-dossiers"></div>`;
   const subs=S.folders.filter(f=>(f.parentId||null)===cur);
   const items=S.items.filter(i=>(i.folderId||null)===cur), open=items.filter(i=>!i.done), done=items.filter(i=>i.done);
@@ -2434,7 +2436,7 @@ const A={
   wkSlot(id,el,ev){ const r=el.getBoundingClientRect(); const m=+el.dataset.h0+Math.round((ev.clientY-r.top)/(+el.dataset.ppm)/15)*15; eventSheet(null,{date:el.dataset.d,start:fromMin(Math.max(0,Math.min(1425,m)))}); },
   agendaDay(id){ agDay=id; agMode='jour'; render(); },
   // Todo
-  openFolder(id,el){ const target=id||null; if(target&&target!==todoFolder&&!folderPath(todoFolder).some(f=>f.id===target)) history.pushState({nav:1},''); todoFolder=target; render(); scrollTo(0,0); },
+  openFolder(id,el){ const target=id||null; if(target){const f=S.folders.find(x=>x.id===target);if(f){recentTodoFolders=[target,...recentTodoFolders.filter(x=>x!==target&&S.folders.some(y=>y.id===x))].slice(0,5);}} if(target&&target!==todoFolder&&!folderPath(todoFolder).some(f=>f.id===target)) history.pushState({nav:1},''); todoFolder=target; render(); scrollTo(0,0); },
   newFolder(){ folderSheet(null,todoFolder); },
   editFolder(){ const f=S.folders.find(f=>f.id===todoFolder); if(f) folderSheet(f); },
   addItem(){ const el=$('#newItem'); const v=el&&el.value.trim(); if(!v){el&&el.focus();return} S.items.push({id:uid(),folderId:todoFolder,text:v,done:false,images:[],created:Date.now()}); save(); render(); const n=$('#newItem'); if(n) n.focus(); },
