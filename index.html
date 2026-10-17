@@ -1108,6 +1108,7 @@ VIEWS.todo=()=>{
   if(todoFolder&&!S.folders.find(f=>f.id===todoFolder)) todoFolder=null;
   const cur=todoFolder, path=folderPath(cur), folderSize=Math.max(80,Math.min(180,+S.settings.folderSize||112));
   let html=`<div class="crumbs"><button class="crumb ${cur?'':'cur'}" data-a="openFolder" data-id="">🏠 Accueil</button>${path.map((p,i)=>`<button class="crumb ${i===path.length-1?'cur':''}" data-a="openFolder" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>`;
+  html+=`<div style="margin:10px 0"><input id="notesSearch" type="search" class="input" placeholder="🔎 Rechercher dans ce dossier…" aria-label="Rechercher dans les notes et sous-dossiers"></div>`;
   const subs=S.folders.filter(f=>(f.parentId||null)===cur);
   const items=S.items.filter(i=>(i.folderId||null)===cur), open=items.filter(i=>!i.done), done=items.filter(i=>i.done);
   if(subs.length) html+=`<div class="tiles ${cur?'subfolder-tiles':''}" id="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${subs.map(tile).join('')}</div>`;
@@ -1120,6 +1121,14 @@ VIEWS.todo=()=>{
     after(){
       sortable($('#tiles'),'.tile',ids=>{reorder(S.folders,ids);save()});
       sortable($('#itemsList'),'.todo-item',ids=>{reorder(S.items,ids);save()});
+      const search=$('#notesSearch');
+      if(search) search.addEventListener('input',()=>{
+        const q=search.value.trim().toLocaleLowerCase('fr');
+        $('#tiles')?.querySelectorAll('.tile').forEach(el=>el.style.display=el.textContent.toLocaleLowerCase('fr').includes(q)?'':'none');
+        $('#main').querySelectorAll('.todo-item').forEach(el=>el.style.display=el.textContent.toLocaleLowerCase('fr').includes(q)?'':'none');
+        const done=$('#main details.donebox');
+        if(done) done.style.display=[...done.querySelectorAll('.todo-item')].some(el=>el.style.display!=='none')?'':'none';
+      });
     }};
 };
 function reorder(arr,ids){const set=new Set(ids);const pos=[];arr.forEach((x,i)=>{if(set.has(x.id))pos.push(i)});const objs=ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean);if(objs.length!==pos.length)return;pos.forEach((p,k)=>arr[p]=objs[k])}
