@@ -274,6 +274,8 @@ body.vjour #main{touch-action:pan-y}
 .gm-cell{min-height:84px;min-width:0;overflow:hidden;display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:3px 2px;background:none;border:0;border-right:1px solid var(--card3);border-bottom:1px solid var(--card3);color:var(--text);font:inherit;text-align:left;cursor:pointer}
 .gm-blank{cursor:default}
 .gm-cell.hol{background:color-mix(in srgb,var(--a1) 8%,transparent)}
+.wk-hd.hol{background:color-mix(in srgb,var(--a1) 12%,transparent);border-radius:8px}
+.wk-col.hol{background:color-mix(in srgb,var(--a1) 5%,transparent)}
 .gm-cell.sel{background:color-mix(in srgb,var(--a1) 18%,transparent)}
 .gm-num{align-self:center;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;font-size:12px;font-weight:700}
 .gm-num.today{background:var(--a1);color:#fff}
@@ -464,7 +466,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.19.0';
+const VERSION='3.20.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -1127,14 +1129,14 @@ function agendaWeekView(){
   let body=`<div class="wk-gutcol" style="height:${H}px">${hrs.map(m=>`<span class="wk-tl" style="top:${(m-H0)*PX}px">${pad(m/60)}h</span>`).join('')}</div>`;
   cols.forEach(({d,B,allday})=>{
     const dd=parseD(d);
-    head+=`<button class="wk-hd ${d===tod?'today':''}" data-a="agendaDay" data-id="${d}" aria-label="${fmtLong(d)}"><small>${'LMMJVSD'[(dd.getDay()+6)%7]}</small><b>${dd.getDate()}</b></button>`;
+    head+=`<button class="wk-hd ${d===tod?'today':''} ${holidayOn(d)?'hol':''}" data-a="agendaDay" data-id="${d}" aria-label="${fmtLong(d)}"><small>${'LMMJVSD'[(dd.getDay()+6)%7]}</small><b>${dd.getDate()}</b></button>`;
     allR+=`<div class="wk-allday">${allday.slice(0,2).map(it=>`<span class="gm-ev ${it.k==='t'?'task':''}" ${it.c?`style="background:${esc(it.c)}"`:''}>${esc(it.o.title)}</span>`).join('')}${allday.length>2?`<span class="gm-more">+${allday.length-2}</span>`:''}</div>`;
     let cluster=[],clEnd=-1; const colsEnd=[];
     const finish=()=>{const n=Math.max(1,...cluster.map(b=>b.col+1));cluster.forEach(b=>b.n=n);cluster=[];colsEnd.length=0};
     B.forEach(b=>{if(cluster.length&&b.s>=clEnd)finish();let c=colsEnd.findIndex(e=>e<=b.s);if(c<0){c=colsEnd.length;colsEnd.push(b.e)}else colsEnd[c]=b.e;b.col=c;cluster.push(b);clEnd=Math.max(clEnd,b.e)});
     if(cluster.length) finish();
     const blocks=B.map(b=>b.k==='c'?`<div class="wk-ev cls" style="top:${(b.s-H0)*PX}px;height:${(b.e-b.s)*PX-2}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px)"><b>🏫</b><small>Classe</small></div>`:`<div class="wk-ev ${b.k==='t'?'task':''}" data-drag="${b.k==='t'?'task':'ev'}" data-mode="t" data-d="${d}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='e'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${(b.s-H0)*PX}px;height:${Math.max(18,(b.e-b.s)*PX-2)}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px);${b.c?'background:'+esc(b.c):''}"><b>${b.k==='t'?urgDot(b.o):''}${esc(b.o.title)}</b><small>${fromMin(b.s)}</small></div>`).join('');
-    body+=`<div class="wk-col" data-tdrop="${d}" data-a="wkSlot" data-d="${d}" data-h0="${H0}" data-ppm="${PX}" style="height:${H}px">${hrs.map(m=>`<i class="wk-hr" style="top:${(m-H0)*PX}px"></i>`).join('')}${blocks}</div>`;
+    body+=`<div class="wk-col ${holidayOn(d)?'hol':''}" data-tdrop="${d}" data-a="wkSlot" data-d="${d}" data-h0="${H0}" data-ppm="${PX}" style="height:${H}px">${hrs.map(m=>`<i class="wk-hr" style="top:${(m-H0)*PX}px"></i>`).join('')}${blocks}</div>`;
   });
   const groups=days.map(d=>{const L=agTasksOn(d);return L.length?agDayLabel(fmtLong(d),L.length)+`<div class="list">${L.map(taskRowLite).join('')}</div>`:''}).join('');
   const lists=groups?`<div class="card agcard">${groups}</div>`:'<div class="small muted agw-empty" style="margin-top:12px">Aucune tâche cette semaine</div>';
