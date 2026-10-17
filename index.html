@@ -756,7 +756,7 @@ function render(){
 function eventsOn(d){return S.events.filter(e=>e.date===d||(e.endDate&&e.date<d&&e.endDate>=d)).sort(byTime)}
 const BYDAY=['SU','MO','TU','WE','TH','FR','SA'];
 const remG=r=>r.gsync===undefined||r.gsync===null?!!S.settings.pushReminders:!!r.gsync;
-const RREM=[['none','Une seule fois'],['day','Chaque jour'],['weekdays','Du lundi au vendredi'],['weekly','Toutes les semaines'],['week','Certains jours de la semaine'],['biweek','Toutes les 2 semaines'],['month','Chaque mois (même date)'],['lastwork','Dernier jour ouvré du mois'],['lastfriday','Dernier vendredi du mois'],['schoolfriday','Dernier vendredi de la période scolaire'],['year','Chaque année']];
+const RREM=[['none','Une seule fois'],['day','Chaque jour'],['weekdays','Du lundi au vendredi'],['weekly','Toutes les semaines'],['week','Certains jours de la semaine'],['biweek','Toutes les 2 semaines'],['month','Chaque mois (même date)'],['lastwork','Dernier jour ouvré du mois'],['lastfriday','Dernier vendredi du mois'],['schoolfriday','Dernier vendredi de la période scolaire'],['schoolstart','À chaque rentrée scolaire'],['schoolreturn','À chaque retour de vacances'],['year','Chaque année']];
 const RTASK=[['none','Aucune'],['day','Chaque jour'],['weekdays','Lun → ven'],['week','Chaque semaine'],['biweek','Toutes les 2 semaines'],['month','Chaque mois'],['lastwork','Dernier jour ouvré du mois'],['year','Chaque année']];
 function lastWorkDay(y,m){const d=new Date(y,m+1,0);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()-1);return iso(d)}
 function lastFriday(y,m){const d=new Date(y,m+1,0);d.setDate(d.getDate()-((d.getDay()-5+7)%7));return iso(d)}
@@ -774,6 +774,8 @@ function remOccurs(r,d){
     case 'lastwork': return d===lastWorkDay(D.getFullYear(),D.getMonth());
     case 'lastfriday': return d===lastFriday(D.getFullYear(),D.getMonth());
     case 'schoolfriday': return D.getDay()===5&&!holidayOn(d)&&!!holidayOn(addDays(d,1));
+    case 'schoolstart': { const h=(S.holidays?.zone===S.settings.zone?S.holidays.list:[]).find(x=>/été|ete/i.test(x.name)); return !!h&&d===addDays(h.end,1); }
+    case 'schoolreturn': return (S.holidays?.zone===S.settings.zone?S.holidays.list:[]).some(h=>d===addDays(h.end,1));
     case 'year': return D.getMonth()===S0.getMonth()&&D.getDate()===S0.getDate();
   }
   return false;
@@ -790,6 +792,8 @@ function recurLabel(r){
     case 'lastwork':return 'Dernier jour ouvré du mois';
     case 'lastfriday':return 'Dernier vendredi du mois';
     case 'schoolfriday':return 'Dernier vendredi avant les vacances scolaires';
+    case 'schoolstart':return 'À chaque rentrée scolaire (après les vacances d’été)';
+    case 'schoolreturn':return 'À chaque retour de vacances scolaires';
     case 'year':return 'Chaque année le '+S0.getDate()+' '+MOIS_A[S0.getMonth()];
   }
   return '';
