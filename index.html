@@ -1115,7 +1115,7 @@ VIEWS.todo=()=>{
   if(done.length) html+=`<details class="donebox"><summary>${plural(done.length,'élément terminé','éléments terminés')}</summary><div class="list">${done.map(itemRow).join('')}</div><button class="btn sm ghost danger block" data-a="clearDone">Effacer les terminés</button></details>`;
   if(subs.length||open.length) html+=`<p class="small muted" style="text-align:center;margin-top:16px">Astuce : appui long sur un dossier, ou ⠿ sur un élément, pour réorganiser.</p>`;
   return {title:cur?path[path.length-1].name:'Notes',html,fab:'newItemQ',mic:'item',
-    actions:`<button class="icon-btn" data-a="exportNotesMenu" aria-label="Télécharger les notes" title="Télécharger">⬇️</button><button class="icon-btn" data-a="newFolder" aria-label="Nouveau dossier">📁+</button>${cur?'<button class="icon-btn" data-a="editFolder" aria-label="Options du dossier">⋯</button>':''}`,
+    actions:`<button class="icon-btn" data-a="exportNotesMenu" aria-label="Télécharger les notes" title="Télécharger">⬇️</button><button class="icon-btn" data-a="newFolder" aria-label="Nouveau dossier">📁＋</button>${cur?'<button class="icon-btn" data-a="editFolder" aria-label="Options du dossier">⋯</button>':''}`,
     after(){
       sortable($('#tiles'),'.tile',ids=>{reorder(S.folders,ids);save()});
       sortable($('#itemsList'),'.todo-item',ids=>{reorder(S.items,ids);save()});
@@ -1246,7 +1246,7 @@ function reviewCards(){
 let libPick=false;
 function micDock(mode,fab){
   const on=!!mode&&recOn&&recMode===mode, sr=!!SRc();
-  const plus=fab&&!on?`<button class="dockplus" data-a="${fab}" aria-label="Ajouter">+</button>`:'';
+  const plus=fab&&!on?`<button class="dockplus" data-a="${fab}" aria-label="Ajouter">＋</button>`:'';
   if(!mode) return `<div class="micdock">${libPick?'<div class="dockpills"><button class="dockpill" data-a="newIdea">＋ Idée</button><button class="dockpill" data-a="newLoan">＋ Prêt</button></div>':''}<div class="dockrow">${plus}</div></div>`;
   const pills=mode==='jour'&&!on&&S.settings.homeAdd?`<div class="dockpills"><button class="dockpill" data-a="slotEvent" data-v="">＋ Événement</button><button class="dockpill" data-a="slotTask" data-v="">＋ Tâche</button></div>`:'';
   const ex={jour:[...(S.settings.homePhoto?[['dictPhoto','📸','Photo']]:[]),...(S.settings.homeKeyboard?[['typeNote','⌨️','Écrire']]:[])],task:[],item:[],event:[]}[mode]||[];
