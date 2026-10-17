@@ -464,7 +464,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.12.3';
+const VERSION='3.13.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -926,11 +926,11 @@ function taskRow(x){
   if(x.recur&&x.recur!=='none') m.push(`<span class="tag">🔁 ${RECUR_L[x.recur]||''}</span>`);
   m.push(syncTag(x));
   const th=x.images&&x.images.length?`<img class="tthumb" data-img="${x.images[0]}" data-a="viewImg" data-id="${x.images[0]}" alt="">`:'';
-  return `<div class="item ${x.done?'done':''} ${(x.steps&&x.steps.length)||subAddFor==='task:'+x.id?'top':''}"><button class="chk ${x.done?'on':''}" data-a="toggleTask" data-id="${x.id}" aria-label="Terminer"></button><div class="grow" data-a="editTask" data-id="${x.id}"><div class="ttl">${x.done?'':urgDot(x)}${esc(x.title)}</div><div class="meta">${m.join('')}</div>${subList(x,'task')}</div>${th}${x.done?'':subBtn(x,'task')}<span class="prio p-${({tres:'haute',urgent:'moyenne',non:'basse'})[urgOf(x)]}"></span></div>`;
+  return `<div class="item ${x.done?'done':''} ${(x.steps&&x.steps.length)||subAddFor==='task:'+x.id?'top':''}"><button class="chk ${x.done?'on':''}" data-a="toggleTask" data-id="${x.id}" aria-label="Terminer"></button><div class="grow" data-a="editTask" data-id="${x.id}"><div class="ttl">${x.done?'':urgDot(x)}${esc(x.title)}</div><div class="meta">${m.join('')}</div>${subList(x,'task')}</div>${th}${!x.done&&x.date&&x.date<=today()?`<button class="btn sm ghost" data-a="reportTask" data-id="${x.id}">↪ Demain</button>`:''}${x.done?'':subBtn(x,'task')}<span class="prio p-${({tres:'haute',urgent:'moyenne',non:'basse'})[urgOf(x)]}"></span></div>`;
 }
 function taskRowLite(x){
   const sy=syncTag(x);
-  return `<div class="item ${x.done?'done':''} ${(x.steps&&x.steps.length)||subAddFor==='task:'+x.id?'top':''}"><button class="chk ${x.done?'on':''}" data-a="toggleTask" data-id="${x.id}" aria-label="Terminer"></button><div class="grow" data-a="editTask" data-id="${x.id}"><div class="ttl">${x.done?'':urgDot(x)}${x.carried&&!x.done?'<span title="Reportée">↩️ </span>':''}${esc(x.title)}</div>${sy?`<div class="meta">${sy}</div>`:''}${subList(x,'task')}</div>${x.done?'':subBtn(x,'task')}<span class="prio p-${({tres:'haute',urgent:'moyenne',non:'basse'})[urgOf(x)]}"></span></div>`;
+  return `<div class="item ${x.done?'done':''} ${(x.steps&&x.steps.length)||subAddFor==='task:'+x.id?'top':''}"><button class="chk ${x.done?'on':''}" data-a="toggleTask" data-id="${x.id}" aria-label="Terminer"></button><div class="grow" data-a="editTask" data-id="${x.id}"><div class="ttl">${x.done?'':urgDot(x)}${x.carried&&!x.done?'<span title="Reportée">↩️ </span>':''}${esc(x.title)}</div>${sy?`<div class="meta">${sy}</div>`:''}${subList(x,'task')}</div>${!x.done&&x.date&&x.date<=today()?`<button class="btn sm ghost" data-a="reportTask" data-id="${x.id}">↪ Demain</button>`:''}${x.done?'':subBtn(x,'task')}<span class="prio p-${({tres:'haute',urgent:'moyenne',non:'basse'})[urgOf(x)]}"></span></div>`;
 }
 // Un seul cadre pour un ensemble de tâches (sans sous-cadres)
 const taskCard=(L,extra='')=>`<div class="card agcard">${extra}<div class="list">${L.map(taskRowLite).join('')}</div></div>`;
@@ -2276,6 +2276,7 @@ function toast(msg,btn,fn){
 
 /* ================= Actions ================= */
 let imgTarget=null;
+let pendingPlan=[];
 const A={
   jourDay(id){ goDay(+id); },
   tab(id){ if(id==='todo') todoFolder=null; if(id==='agenda'){ agMode='mois'; agDay=null; } if(id==='jour'&&view==='jour'&&!sub) jourOff=0; view=id; sub=null; render(); scrollTo(0,0); },
@@ -2314,6 +2315,10 @@ const A={
   taskFilter(id){ taskFilter=id; render(); },
   taskCat(id){ taskCat=id; render(); },
   planBurst(id,el){ const d=el.dataset.d||today(), L=suggest(d).filter(s=>s.burst); L.forEach(s=>{s.task.date=d;s.task.time=fromMin(s.start);markPending(s.task,'task')}); save(); render(); toast('⚡ Rafale planifiée à '+(L[0]?fromMin(L[0].start):'')); },
+  reportTask(id){ const x=S.tasks.find(t=>t.id===id); if(!x||x.done)return; const old={date:x.date,time:x.time,carried:x.carried}; x.date=addDays(today(),1);x.carried=true;markPending(x,'task');save();render();toast('↪️ « '+x.title+' » reportée à demain','Annuler',()=>{x.date=old.date;x.time=old.time;if(old.carried===undefined)delete x.carried;else x.carried=old.carried;markPending(x,'task');save();render()}); },
+  planAdjust(id,el){ const p=pendingPlan.find(p=>p.task.id===id); if(!p)return; p.start=Math.max(0,Math.min(1430,p.start+(+el.dataset.v||0))); p.end=p.start+Math.max(5,+p.task.duration||30); A.showPlan(pendingPlan[0]&&pendingPlan[0].date); },
+  showPlan(d){ const L=pendingPlan; if(!L.length){closeSheet();toast('Aucune tâche à placer dans les créneaux libres');return;} const rows=L.map(p=>`<div class="item"><div class="grow"><div class="ttl">${esc(p.task.title)}</div><div class="meta"><span class="tag">${fmtDur(p.end-p.start)}</span><span class="tag">${fromMin(p.start)}–${fromMin(p.end)}</span></div></div><button type="button" class="btn sm ghost" data-a="planAdjust" data-id="${p.task.id}" data-v="-15" aria-label="Avancer de 15 minutes">−15</button><button type="button" class="btn sm ghost" data-a="planAdjust" data-id="${p.task.id}" data-v="15" aria-label="Retarder de 15 minutes">+15</button></div>`).join(''); openSheet('Vérifier le planning',`<p class="small muted">Voici une proposition tenant compte des rendez-vous et des créneaux libres. Ajuste chaque tâche par pas de 15 minutes, puis confirme.</p><div class="list">${rows}</div><div class="sh-foot"><button type="button" class="btn ghost" data-a="closeSheet">Annuler</button><button type="button" class="btn primary" data-a="applyPlan">✓ Accepter ce planning</button></div>`); },
+  applyPlan(){ const d=pendingPlan[0]&&pendingPlan[0].date; if(!pendingPlan.length){closeSheet();return;} const busy=[...eventsOn(d).filter(e=>e.start&&e.date===d).map(e=>[toMin(e.start),e.end&&e.end>e.start?toMin(e.end):toMin(e.start)+60,e.title]),...S.tasks.filter(x=>x.date===d&&x.time&&!x.done&&!pendingPlan.some(p=>p.task.id===x.id)).map(x=>[toMin(x.time),toMin(x.time)+Math.max(15,+x.duration||30),x.title]),...classB(d,'class').map(b=>[b.s,b.e,'En classe'])]; const slots=pendingPlan.map(p=>[p.start,p.end,p.task.title]).sort((a,b)=>a[0]-b[0]); const all=[...busy,...slots].sort((a,b)=>a[0]-b[0]); for(let i=1;i<all.length;i++){if(all[i][0]<all[i-1][1]){toast('⚠️ Chevauchement entre « '+all[i-1][2]+' » et « '+all[i][2]+' ». Ajuste les horaires.');return;}} pendingPlan.forEach(p=>{p.task.date=d;p.task.time=fromMin(p.start);markPending(p.task,'task')}); const n=pendingPlan.length;pendingPlan=[];save();closeSheet();render();toast('✨ Planning accepté · '+plural(n,'tâche placée','tâches placées')); },
   reportSurplus(){
     const t=today(); let fr=freeSlots(t).reduce((a,[x,y])=>a+Math.max(0,y-x),0), keep=0; const moved=[];
     S.tasks.filter(x=>dueOn(x,t)&&isWork(x)&&effUrg(x)==='tres'&&!x.time).sort(byScore).forEach(x=>{const d=+x.duration||30; if(keep+d<=fr) keep+=d; else moved.push(x)});
@@ -2323,7 +2328,7 @@ const A={
   pickDate(id){ const f=$('#shForm'); if(!f) return; const r=f.querySelector('[name=when][value=day]'); r.checked=true; thetaWhen(r.closest('div[onchange]')); f.querySelector('[name=date]').value=id; thetaProp(); },
   toggleDay(id){ const[k,n]=id.split(':'), key=k==='class'?'classDays':'directionDays', v=+n, arr=[...(S.settings[key]||[])], i=arr.indexOf(v); if(i<0)arr.push(v); else arr.splice(i,1); S.settings[key]=arr.sort(); save(); render(); },
   plan(id,el){ const x=S.tasks.find(x=>x.id===id); if(!x) return; x.date=el.dataset.d||today(); x.time=el.dataset.v; markPending(x,'task'); save(); render(); toast('🗓️ Planifiée à '+x.time); },
-  planAll(id,el){ const d=(el&&el.dataset.d)||today(), sg=suggest(d); sg.forEach(s=>{s.task.date=d;s.task.time=fromMin(s.start);markPending(s.task,'task')}); save(); render(); toast('✨ '+plural(sg.length,'tâche planifiée','tâches planifiées')); },
+  planAll(id,el){ const d=(el&&el.dataset.d)||today(), sg=suggest(d); pendingPlan=sg.filter(p=>!p.burst).map(p=>({task:p.task,date:d,start:p.start,end:p.end})); A.showPlan(d); },
   // Agenda
   newEvent(){ eventSheet(null); },
   editEvent(id){ const e=S.events.find(e=>e.id===id); if(e) eventSheet(e); },
