@@ -470,7 +470,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.25.0';
+const VERSION='3.26.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -756,9 +756,10 @@ function render(){
 function eventsOn(d){return S.events.filter(e=>e.date===d||(e.endDate&&e.date<d&&e.endDate>=d)).sort(byTime)}
 const BYDAY=['SU','MO','TU','WE','TH','FR','SA'];
 const remG=r=>r.gsync===undefined||r.gsync===null?!!S.settings.pushReminders:!!r.gsync;
-const RREM=[['none','Une seule fois'],['day','Chaque jour'],['weekdays','Du lundi au vendredi'],['weekly','Toutes les semaines'],['week','Certains jours de la semaine'],['biweek','Toutes les 2 semaines'],['month','Chaque mois (même date)'],['lastwork','Dernier jour ouvré du mois'],['year','Chaque année']];
+const RREM=[['none','Une seule fois'],['day','Chaque jour'],['weekdays','Du lundi au vendredi'],['weekly','Toutes les semaines'],['week','Certains jours de la semaine'],['biweek','Toutes les 2 semaines'],['month','Chaque mois (même date)'],['lastwork','Dernier jour ouvré du mois'],['lastfriday','Dernier vendredi du mois'],['schoolfriday','Dernier vendredi de la période scolaire'],['year','Chaque année']];
 const RTASK=[['none','Aucune'],['day','Chaque jour'],['weekdays','Lun → ven'],['week','Chaque semaine'],['biweek','Toutes les 2 semaines'],['month','Chaque mois'],['lastwork','Dernier jour ouvré du mois'],['year','Chaque année']];
 function lastWorkDay(y,m){const d=new Date(y,m+1,0);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()-1);return iso(d)}
+function lastFriday(y,m){const d=new Date(y,m+1,0);d.setDate(d.getDate()-((d.getDay()-5+7)%7));return iso(d)}
 function remOccurs(r,d){
   const rc=r.recur||'none'; if(rc==='none') return r.date===d;
   const st=r.date||d; if(d<st) return false;
@@ -771,6 +772,8 @@ function remOccurs(r,d){
     case 'biweek': return Math.round((D-S0)/864e5)%14===0;
     case 'month': return D.getDate()===Math.min(S0.getDate(),new Date(D.getFullYear(),D.getMonth()+1,0).getDate());
     case 'lastwork': return d===lastWorkDay(D.getFullYear(),D.getMonth());
+    case 'lastfriday': return d===lastFriday(D.getFullYear(),D.getMonth());
+    case 'schoolfriday': return D.getDay()===5&&!holidayOn(d)&&!!holidayOn(addDays(d,1));
     case 'year': return D.getMonth()===S0.getMonth()&&D.getDate()===S0.getDate();
   }
   return false;
@@ -785,6 +788,8 @@ function recurLabel(r){
     case 'biweek':return 'Un '+JOURS[S0.getDay()]+' sur deux';
     case 'month':return 'Le '+S0.getDate()+' de chaque mois';
     case 'lastwork':return 'Dernier jour ouvré du mois';
+    case 'lastfriday':return 'Dernier vendredi du mois';
+    case 'schoolfriday':return 'Dernier vendredi avant les vacances scolaires';
     case 'year':return 'Chaque année le '+S0.getDate()+' '+MOIS_A[S0.getMonth()];
   }
   return '';
@@ -796,7 +801,7 @@ function rrule(r){
     case 'weekly':return 'RRULE:FREQ=WEEKLY;BYDAY='+BYDAY[S0.getDay()];
     case 'week':return 'RRULE:FREQ=WEEKLY;BYDAY='+(r.days&&r.days.length?r.days:[S0.getDay()]).map(i=>BYDAY[i]).join(',');
     case 'biweek':return 'RRULE:FREQ=WEEKLY;INTERVAL=2'; case 'month':return 'RRULE:FREQ=MONTHLY';
-    case 'lastwork':return 'RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1'; case 'year':return 'RRULE:FREQ=YEARLY';
+    case 'lastwork':return 'RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1'; case 'lastfriday':return 'RRULE:FREQ=MONTHLY;BYDAY=FR;BYSETPOS=-1'; case 'year':return 'RRULE:FREQ=YEARLY';
   }
   return null;
 }
