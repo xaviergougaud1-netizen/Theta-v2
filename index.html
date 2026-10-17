@@ -464,7 +464,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.16.0';
+const VERSION='3.17.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -1085,7 +1085,7 @@ VIEWS.todo=()=>{
   if(done.length) html+=`<details class="donebox"><summary>${plural(done.length,'élément terminé','éléments terminés')}</summary><div class="list">${done.map(itemRow).join('')}</div><button class="btn sm ghost danger block" data-a="clearDone">Effacer les terminés</button></details>`;
   if(subs.length||open.length) html+=`<p class="small muted" style="text-align:center;margin-top:16px">Astuce : appui long sur un dossier, ou ⠿ sur un élément, pour réorganiser.</p>`;
   return {title:cur?path[path.length-1].name:'Notes',html,fab:'newItemQ',mic:'item',
-    actions:`<button class="icon-btn" data-a="newFolder" aria-label="Nouveau dossier">📁+</button>${cur?'<button class="icon-btn" data-a="editFolder" aria-label="Options du dossier">⋯</button>':''}`,
+    actions:`<button class="icon-btn" data-a="exportNotes" data-v="txt" aria-label="Exporter en texte">TXT</button><button class="icon-btn" data-a="exportNotes" data-v="pdf" aria-label="Exporter en PDF">PDF</button><button class="icon-btn" data-a="newFolder" aria-label="Nouveau dossier">📁+</button>${cur?'<button class="icon-btn" data-a="editFolder" aria-label="Options du dossier">⋯</button>':''}`,
     after(){
       sortable($('#tiles'),'.tile',ids=>{reorder(S.folders,ids);save()});
       sortable($('#itemsList'),'.todo-item',ids=>{reorder(S.items,ids);save()});
@@ -2483,6 +2483,30 @@ const A={
       setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
       S.settings.lastBackup=Date.now(); save(); render(); toast('💾 Sauvegarde téléchargée');
     }catch(e){ toast('⚠️ Export impossible : '+e.message); }
+  },
+  exportNotes(format){
+    const cur=todoFolder, path=folderPath(cur), title=cur?(path[path.length-1]?.name||'Notes'):'Mes notes';
+    const items=S.items.filter(x=>(x.folderId||null)===cur);
+    const folders=S.folders.filter(x=>(x.parentId||null)===cur);
+    const lines=[title,'='.repeat(title.length),''];
+    if(folders.length){lines.push('DOSSIERS');folders.forEach(x=>lines.push('📁 '+x.name));lines.push('');}
+    if(items.length){lines.push('NOTES');items.forEach(x=>lines.push((x.done?'[Terminé] ':'[ ] ')+x.text));}
+    else if(!folders.length) lines.push('Aucune note.');
+    const content=lines.join('\n');
+    const filename='theta-notes-'+(title.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/^-|-$/g,'').toLowerCase()||'liste')+'-'+today();
+    if(format==='txt'){
+      const blob=new Blob(['\uFEFF',content],{type:'text/plain;charset=utf-8'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename+'.txt';document.body.appendChild(a);a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('📄 Liste de notes exportée en texte');return;
+    }
+    const w=window.open('','_blank');
+    if(!w){toast('Autorisez les fenêtres surgissantes pour créer le PDF');return;}
+    const escHtml=v=>String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>'+escHtml(title)+'</title><style>body{font:16px/1.5 Arial,sans-serif;max-width:850px;margin:40px auto;padding:0 24px;color:#222}h1{font-size:24px;border-bottom:2px solid #444;padding-bottom:10px}.entry{padding:8px 0;border-bottom:1px solid #ddd;white-space:pre-wrap}.folder{font-weight:bold;margin:8px 0}@media print{body{margin:15mm auto;padding:0}.entry{break-inside:avoid}}</style></head><body><h1>'+escHtml(title)+'</h1>');
+    if(folders.length){w.document.write('<h2>Dossiers</h2>');folders.forEach(x=>w.document.write('<div class="folder">📁 '+escHtml(x.name)+'</div>'));}
+    if(items.length){w.document.write('<h2>Notes</h2>');items.forEach(x=>w.document.write('<div class="entry">'+(x.done?'☑ ':'☐ ')+escHtml(x.text)+'</div>'));}
+    if(!items.length&&!folders.length)w.document.write('<p>Aucune note.</p>');
+    w.document.write('<scr'+'ipt>window.onload=()=>window.print()<\\/scr'+'ipt></body></html>');w.document.close();toast('🖨️ Dans la fenêtre d’impression, choisis « Enregistrer au format PDF »');
   },
   import(){ $('#fileImport').click(); },
   resetAll(){ if(!confirm('Effacer TOUTES les données de l\'app sur ce téléphone ? Pensez à exporter avant.')) return; if(!confirm('Vraiment tout effacer ? C\'est définitif.')) return; localStorage.removeItem(KEY); localStorage.removeItem('theta_v2_gtok'); gTok=null; IDB.clear().catch(()=>{}); hasCustomBg=false; $('#bg').dataset.k=''; S=defaults(); normalizeState(); save(); sub=null; view='jour'; render(); toast('Données effacées'); },
