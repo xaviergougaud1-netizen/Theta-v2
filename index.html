@@ -475,7 +475,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.28.0';
+const VERSION='3.28.1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -588,6 +588,7 @@ function normalizeState(){
   const d=defaults();
   for(const k in d) if(S[k]===undefined) S[k]=d[k];
   S.settings={...d.settings,...S.settings};
+  if(!S.settings._taskFree){ (S.tasks||[]).forEach(x=>{ if(x.gid&&!x.time) x.sync='pending'; }); S.settings._taskFree=true; }
   if(!S.settings._lift2){ if(+S.settings.navLift===18) S.settings.navLift=4; S.settings._lift2=true; }
   if(!S.settings._bg3){ const b=S.settings.bg;
     if(b&&b.startsWith('p_')){S.settings.bgShape='montagnes';S.settings.bgColor=b.slice(2)===S.settings.palette?'auto':b.slice(2);S.settings.bg='shape'}
@@ -1979,13 +1980,13 @@ const validD=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'');
 function gEventBody(e){
   const b={summary:e.title,location:e.place||'',description:e.notes||''};
   if(e.start){const et=e.end&&(e.end>e.start||(e.endDate&&e.endDate>e.date))?e.end:fromMin(Math.min(toMin(e.start)+60,1439));b.start=gTime(e.date,e.start);b.end=gTime(e.endDate||e.date,et)}
-  else{b.start={date:e.date};b.end={date:addDays(e.endDate||e.date,1)}}
+  else{b.start={date:e.date};b.end={date:addDays(e.endDate||e.date,1)};if(!e.gid)b.transparency='transparent'}
   return b;
 }
 function gTaskBody(x){
   const b={summary:(x.done?'✔️ ':'✅ ')+x.title,description:(x.notes?x.notes+'\n\n':'')+'Priorité '+x.priority+' · Thêta',extendedProperties:{private:{moType:'task',moId:x.id}}};
   if(x.time){b.start=gTime(x.date,x.time);b.end=gTime(x.date,fromMin(Math.min(toMin(x.time)+(+x.duration||30),1439)))}
-  else{b.start={date:x.date};b.end={date:addDays(x.date,1)}}
+  else{b.start={date:x.date};b.end={date:addDays(x.date,1)};b.transparency='transparent'}
   return b;
 }
 function gRemBody(r){
