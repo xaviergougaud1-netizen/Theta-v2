@@ -475,7 +475,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.28.2';
+const VERSION='3.29.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -588,6 +588,7 @@ function normalizeState(){
   const d=defaults();
   for(const k in d) if(S[k]===undefined) S[k]=d[k];
   S.settings={...d.settings,...S.settings};
+  if(!S.settings._bdayFix){ (S.events||[]).forEach(e=>{ if(e.source!=='local'&&isBirthday(e)){ if(e.sync==='pending') e.sync='ok'; delete e.syncErr; e.gUpdated=null; } }); S.settings.lastFullSync=0; S.settings._bdayFix=true; S.settings._bdayFree=true; }
   if(!S.settings._bdayFree){ (S.events||[]).forEach(e=>{ if(e.gid&&!e.start&&!e.readonly&&(e.source==='local'||isBirthday(e))) e.sync='pending'; }); S.settings._bdayFree=true; }
   if(!S.settings._taskFree){ (S.tasks||[]).forEach(x=>{ if(x.gid&&!x.time) x.sync='pending'; }); S.settings._taskFree=true; }
   if(!S.settings._lift2){ if(+S.settings.navLift===18) S.settings.navLift=4; S.settings._lift2=true; }
@@ -746,6 +747,7 @@ function carryOver(){
   return n;
 }
 function render(){
+  if(S.settings.lastHolReset!==today()){ const n=holidayResets(); S.settings.lastHolReset=today(); save(); if(n) setTimeout(()=>toast('🏖️ Fin des vacances : '+plural(n,'note décochée','notes décochées')),900); }
   if(S.settings.lastCarry!==today()){ const n=carryOver(); S.settings.lastCarry=today(); save(); if(n) setTimeout(()=>toast('↩️ '+plural(n,'tâche très urgente reportée','tâches très urgentes reportées')+' à aujourd\'hui'),700); }
   applyTheme(); renderNav();
   const r=(sub?SUBS[sub]:VIEWS[view])();
@@ -1124,6 +1126,14 @@ function itemRow(i){
   return `<div class="item todo-item ${i.done?'done':''} ${(i.steps&&i.steps.length)||(i.images&&i.images.length)||subAddFor==='item:'+i.id?'top':''}" data-id="${i.id}">${i.done?'':'<span class="handle" aria-label="Déplacer">⠿</span>'}<button class="chk round ${i.done?'on':''}" data-a="toggleItem" data-id="${i.id}" aria-label="${i.done?'Marquer comme non terminée':'Marquer comme terminée'}"></button><div class="grow" data-a="editItem" data-id="${i.id}"><div class="ttl">${i.lvl&&!i.done?`<span class="udot u-${i.lvl==='tres'?'tres':'urgent'}"></span>`:''}${linkify(esc(i.text))}</div>${subList(i,'item')}${i.images&&i.images.length?`<div class="thumbs">${i.images.map(id=>`<img data-img="${id}" data-a="viewImg" data-id="${id}" alt="">`).join('')}</div>`:''}</div><button class="icon-btn sm" data-a="moveItem" data-id="${i.id}" aria-label="Déplacer vers un dossier" title="Déplacer vers un dossier">📁↗</button>${i.done?'':subBtn(i,'item')}</div>`;
 }
 let notesSearchOn=false;
+function uncheckFolder(id){ const ids=[id,...descendants(id)]; let n=0; S.items.forEach(i=>{ if(ids.includes(i.folderId)&&i.done){ i.done=false; i.doneAt=null; n++; } }); return n; }
+// Le dernier jour des vacances (ou jusqu'à 10 jours après si l'app n'a pas été ouverte), on décoche une seule fois par période
+function holidayResets(){
+  const t=today(), L=(S.holidays&&S.holidays.zone===S.settings.zone&&S.holidays.list)||[], h=L.find(x=>t>=x.end&&t<=addDays(x.end,10));
+  if(!h) return 0; let n=0;
+  S.folders.filter(f=>f.resetHol&&f.lastReset!==h.start).forEach(f=>{ n+=uncheckFolder(f.id); f.lastReset=h.start; });
+  return n;
+}
 VIEWS.todo=()=>{
   if(todoFolder&&!S.folders.find(f=>f.id===todoFolder)) todoFolder=null;
   const cur=todoFolder, path=folderPath(cur), folderSize=Math.max(80,Math.min(180,+S.settings.folderSize||112));
@@ -1225,10 +1235,23 @@ function agendaMonthView(){
   const lists=groups?`<div class="card agcard">${groups}</div>`:'';
   return agendaNav(cap(MOIS_A[D.getMonth()])+' '+D.getFullYear())+`<div class="gm">${head}${cells}</div>`+(lists||'<div class="small muted agw-empty" style="margin-top:12px">Aucune tâche ce mois-ci</div>');
 }
+let agSearchOn=false, agQuery='';
+const agActions=()=>`<button class="icon-btn ${agSearchOn?'on':''}" data-a="agSearchToggle" aria-label="Rechercher dans l'agenda" title="Rechercher">🔍</button>`;
+function agSearchResults(q){
+  q=norm(q.trim()); if(q.length<2) return '<p class="small muted" style="text-align:center">Tape au moins 2 lettres.</p>';
+  const t=today(), hits=[...S.events.filter(e=>!isSchoolHolidayEvent(e)&&norm((e.title||'')+' '+(e.place||'')+' '+(e.notes||'')).includes(q)).map(e=>({d:e.date,h:eventRow(e,e.date)})),
+    ...S.tasks.filter(x=>x.date&&norm((x.title||'')+' '+(x.notes||'')).includes(q)).map(x=>({d:x.date,h:taskRow(x)}))];
+  if(!hits.length) return empty('🔍','Aucun résultat','',1);
+  const fut=hits.filter(x=>x.d>=t).sort((a,b)=>a.d.localeCompare(b.d)), past=hits.filter(x=>x.d<t).sort((a,b)=>b.d.localeCompare(a.d));
+  const grp=L=>{let h='',last='';L.slice(0,60).forEach(x=>{if(x.d!==last){h+=`<div class="agday-h">${fmtLong(x.d)}${x.d.slice(0,4)!==t.slice(0,4)?' '+x.d.slice(0,4):''}</div>`;last=x.d}h+=x.h});return h};
+  return (fut.length?sec('À venir',fut.length)+`<div class="list">${grp(fut)}</div>`:'')+(past.length?sec('Passés',past.length)+`<div class="list">${grp(past)}</div>`:'');
+}
 VIEWS.agenda=()=>{
+  if(agSearchOn) return {title:'Agenda',actions:agActions(),html:`<div style="margin:6px 0 10px"><input id="agSearch" type="search" class="input" placeholder="🔍 Rechercher un événement, une tâche…" value="${esc(agQuery)}"></div><div id="agResults">${agSearchResults(agQuery)}</div>`,fab:'newEvent',mic:'event',
+    after(){ const i=$('#agSearch'); if(!i) return; setTimeout(()=>i.focus(),50); i.addEventListener('input',()=>{ agQuery=i.value; $('#agResults').innerHTML=agSearchResults(agQuery); }); }};
   if(agMode!=='liste'){
     const body=agMode==='jour'?agendaDayView():agMode==='semaine'?agendaWeekView():agendaMonthView();
-    return {title:'Agenda',html:`<div style="margin-bottom:12px">${agendaModeChips()}</div>`+body,fab:'newEvent',mic:'event'};
+    return {title:'Agenda',actions:agActions(),html:`<div style="margin-bottom:12px">${agendaModeChips()}</div>`+body,fab:'newEvent',mic:'event'};
   }
   const t=today(), from=agendaPast?addDays(t,-30):t, to=addDays(t,90), days={};
   const add=(d,o)=>(days[d]=days[d]||[]).push(o);
@@ -1246,7 +1269,7 @@ VIEWS.agenda=()=>{
     const L=days[d].sort((a,b)=>a.s.localeCompare(b.s));
     html+=sec(fmtLong(d)+(d===t?' · aujourd\'hui':''),null)+`<div class="list">${L.map(x=>x.k==='h'?holiHTML(x.o):x.k==='e'?eventRow(x.o,d):taskRow(x.o)).join('')}</div>`;
   }
-  return {title:'Agenda',html,fab:'newEvent',mic:'event'};
+  return {title:'Agenda',actions:agActions(),html,fab:'newEvent',mic:'event'};
 };
 
 /* ---------- Notes ---------- */
@@ -1646,8 +1669,10 @@ function folderSheet(f,parentId){
   const isNew=!f, v=f||{name:'',color:ALL_GRADS[Math.floor(Math.random()*ALL_GRADS.length)],icon:'📁',parentId};
   openSheet(isNew?'Nouveau dossier':'Dossier « '+f.name+' »',
     fld('Nom',inp('name',v.name,'text','required autofocus'))+fld('Icône',`<button type="button" class="btn sm ghost" onclick="applySuggestedFolderIcon()">✨ Icône conseillée selon le nom</button><div class="swatches iconpick">${[...new Set([v.icon||'📁',...FOLDER_ICONS])].map(ic=>`<label title="${ic}"><input type="radio" name="icon" value="${esc(ic)}" ${ic===(v.icon||'📁')?'checked':''}><span>${ic}</span></label>`).join('')}</div>`)+
-    fld('Couleurs principales',`<div class="swatches">${FOLDER_COLOR_FAMILIES.map((f,i)=>`<label title="${f.name}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE}" onchange="showFolderShades(${i})" ${f.main===gradOf(v.color)?'checked':''}><span style="background:${f.main}"></span></label>`).join('')}</div>`)+fld('Déclinaisons de la couleur choisie',`<div>${FOLDER_COLOR_FAMILIES.map((f,i)=>`<div class="swatches folder-shade-group" style="display:${i===folderFamilyIndex(v.color)?'flex':'none'}" data-family="${i}">${f.shades.map((g,j)=>`<label title="${f.name} — déclinaison ${j+1}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE+j+1}" ${g===gradOf(v.color)?'checked':''}><span style="background:${g}"></span></label>`).join('')}${i===folderFamilyIndex(v.color)&&ALL_GRADS.indexOf(gradOf(v.color))>=FOLDER_COLOR_FAMILIES.length*FOLDER_FAMILY_SIZE?`<label title="Ancienne couleur conservée"><input type="radio" name="color" value="${ALL_GRADS.indexOf(gradOf(v.color))}" checked><span style="background:${gradOf(v.color)}"></span></label>`:''}</div>`).join('')}</div>`)+fld('Dans le dossier',`<select name="parentId">${folderOptions(v.parentId,f?[f.id,...descendants(f.id)]:[])}</select>`),
-    {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
+    fld('Couleurs principales',`<div class="swatches">${FOLDER_COLOR_FAMILIES.map((f,i)=>`<label title="${f.name}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE}" onchange="showFolderShades(${i})" ${f.main===gradOf(v.color)?'checked':''}><span style="background:${f.main}"></span></label>`).join('')}</div>`)+fld('Déclinaisons de la couleur choisie',`<div>${FOLDER_COLOR_FAMILIES.map((f,i)=>`<div class="swatches folder-shade-group" style="display:${i===folderFamilyIndex(v.color)?'flex':'none'}" data-family="${i}">${f.shades.map((g,j)=>`<label title="${f.name} — déclinaison ${j+1}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE+j+1}" ${g===gradOf(v.color)?'checked':''}><span style="background:${g}"></span></label>`).join('')}${i===folderFamilyIndex(v.color)&&ALL_GRADS.indexOf(gradOf(v.color))>=FOLDER_COLOR_FAMILIES.length*FOLDER_FAMILY_SIZE?`<label title="Ancienne couleur conservée"><input type="radio" name="color" value="${ALL_GRADS.indexOf(gradOf(v.color))}" checked><span style="background:${gradOf(v.color)}"></span></label>`:''}</div>`).join('')}</div>`)+fld('Dans le dossier',`<select name="parentId">${folderOptions(v.parentId,f?[f.id,...descendants(f.id)]:[])}</select>`)+
+    `<label class="srow"><span class="grow">🏖️ Tout décocher à la fin des vacances<div class="small muted">Le dernier jour des vacances scolaires, les notes cochées de ce dossier (et de ses sous-dossiers) redeviennent à faire.${S.settings.zone?'':' Choisis d\'abord ta zone de vacances dans Réglages.'}</div></span><input type="checkbox" class="sw" name="resetHol" ${v.resetHol?'checked':''}></label>`+(isNew?'':`<button type="button" class="btn sm ghost" data-a="folderUncheck" data-id="${f.id}">↺ Tout décocher maintenant</button>`)+
+    '',
+    {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null,resetHol:!!fd.resetHol});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
      onDelete:isNew?null:()=>{
        const ids=[f.id,...descendants(f.id)], its=S.items.filter(i=>ids.includes(i.folderId));
        if(!confirm(`Supprimer « ${f.name} »${ids.length>1?', ses '+(ids.length-1)+' sous-dossier(s)':''} et ${plural(its.length,'élément')} ? Action définitive.`)) return;
@@ -1981,7 +2006,7 @@ const validD=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'');
 function gEventBody(e){
   const b={summary:e.title,location:e.place||'',description:e.notes||''};
   if(e.start){const et=e.end&&(e.end>e.start||(e.endDate&&e.endDate>e.date))?e.end:fromMin(Math.min(toMin(e.start)+60,1439));b.start=gTime(e.date,e.start);b.end=gTime(e.endDate||e.date,et)}
-  else{b.start={date:e.date};b.end={date:addDays(e.endDate||e.date,1)};if(!e.gid||e.source==='local'||isBirthday(e))b.transparency='transparent'}
+  else{b.start={date:e.date};b.end={date:addDays(e.endDate||e.date,1)};if(!e.gid||e.source==='local')b.transparency='transparent'}
   return b;
 }
 function gTaskBody(x){
@@ -2078,7 +2103,7 @@ async function sync(interactive){
         if(e&&e.gUpdated===ge.updated) continue;
         if(!e){e={id:uid(),gid:ge.id,source:'google',created:Date.now()};S.events.push(e)}
         const f=fromG(ge);
-        Object.assign(e,{title:ge.summary||'(Sans titre)',date:f.date,endDate:f.endDate,start:f.start,end:f.end,place:ge.location||'',notes:(ge.description||'').replace(/<[^>]+>/g,' ').trim(),calId:c.id,calName:c.name,color:c.color,sync:'ok',gUpdated:ge.updated,readonly:['reader','freeBusyReader'].includes(c.role)});
+        Object.assign(e,{title:ge.summary||'(Sans titre)',date:f.date,endDate:f.endDate,start:f.start,end:f.end,place:ge.location||'',notes:(ge.description||'').replace(/<[^>]+>/g,' ').trim(),calId:c.id,calName:c.name,color:c.color,sync:'ok',gUpdated:ge.updated,gType:ge.eventType||'',readonly:['reader','freeBusyReader'].includes(c.role)||ge.eventType==='birthday'});
         down++;
       }
       if(incr) continue;
@@ -2462,6 +2487,7 @@ const A={
   editEvent(id){ const e=S.events.find(e=>e.id===id); if(e) eventSheet(e); },
   agendaPast(id){ agendaPast=id==='1'; render(); },
   agendaMode(id){ agMode=id; render(); },
+  agSearchToggle(){ agSearchOn=!agSearchOn; if(!agSearchOn) agQuery=''; render(); },
   agendaStep(id){ const n=+id, t=agCur(), D=parseD(t); agDay = agMode==='jour'?addDays(t,n) : agMode==='semaine'?addDays(t,7*n) : iso(new Date(D.getFullYear(),D.getMonth()+n,1)); render(); },
   agendaToday(){ agDay=today(); render(); },
   wkSlot(id,el,ev){ const r=el.getBoundingClientRect(); const m=+el.dataset.h0+Math.round((ev.clientY-r.top)/(+el.dataset.ppm)/15)*15; eventSheet(null,{date:el.dataset.d,start:fromMin(Math.max(0,Math.min(1425,m)))}); },
@@ -2591,6 +2617,7 @@ const A={
       S.settings.lastBackup=Date.now(); save(); render(); toast('💾 Sauvegarde téléchargée');
     }catch(e){ toast('⚠️ Export impossible : '+e.message); }
   },
+  folderUncheck(id){ const n=uncheckFolder(id); save(); render(); toast(n?'↺ '+plural(n,'note décochée','notes décochées'):'Aucune note cochée'); },
   notesSearchToggle(){ notesSearchOn=!notesSearchOn; render(); },
   exportNotesMenu(){
     openSheet('Télécharger les notes',`<p class="muted small">Choisissez le format du fichier à télécharger.</p><div class="list"><button class="btn block" data-a="exportNotes" data-v="txt">📄 Télécharger en texte (.txt)</button><button class="btn block" data-a="exportNotes" data-v="pdf">📕 Télécharger en PDF (.pdf)</button></div>`);
@@ -2598,7 +2625,7 @@ const A={
   exportNotes(format,el){
     format=el?.dataset?.v||format;
     const cur=todoFolder, path=folderPath(cur), title=cur?(path[path.length-1]?.name||'Notes'):'Mes notes';
-    const items=S.items.filter(x=>(x.folderId||null)===cur);
+    const items=S.items.filter(x=>(x.folderId||null)===cur&&!x.done);
     const folders=S.folders.filter(x=>(x.parentId||null)===cur);
     const lines=[title,'='.repeat(title.length),''];
     if(folders.length){lines.push('DOSSIERS');folders.forEach(x=>lines.push('📁 '+x.name));lines.push('');}
@@ -2796,6 +2823,12 @@ function init(){
     getToken(true,true).then(()=>sync(false)).catch(()=>{ renewOff=true; });
   },true);
   setTimeout(()=>loadHolidays(false),2000);
+  // Agenda : glisser à gauche / à droite pour passer au mois (semaine, jour) suivant ou précédent
+  let agSw=null;
+  document.addEventListener('touchstart',e=>{ agSw=null; if(view!=='agenda'||sub||sheetOpen||agSearchOn||agMode==='liste'||e.touches.length>1) return; if(e.target.closest('input,textarea,select,.chips')) return; const t=e.touches[0]; agSw={x:t.clientX,y:t.clientY,at:Date.now()}; },{passive:true});
+  document.addEventListener('touchend',e=>{ if(!agSw) return; const t=e.changedTouches[0], dx=t.clientX-agSw.x, dy=t.clientY-agSw.y, dt=Date.now()-agSw.at; agSw=null;
+    if(TD.on||performance.now()<TD.until) return;
+    if(Math.abs(dx)>70&&Math.abs(dy)<Math.abs(dx)*0.6&&dt<700) A.agendaStep(dx<0?1:-1); },{passive:true});
   document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ if(!sheetOpen&&document.activeElement.tagName!=='TEXTAREA') render(); checkReminders(); if(tokValid()&&S.settings.autoSync) sync(false); } });
   matchMedia('(prefers-color-scheme: light)').addEventListener('change',applyTheme);
 }

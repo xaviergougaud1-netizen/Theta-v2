@@ -1,6 +1,6 @@
 // Thêta — service worker (hors ligne, partage entrant, polices)
 // Changez ce numéro à chaque mise à jour de index.html pour forcer le rafraîchissement.
-const CACHE = 'theta-v2-3.28.2';
+const CACHE = 'theta-v2-3.29.0';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
