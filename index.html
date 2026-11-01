@@ -97,6 +97,8 @@ body.navtop #nav{bottom:auto;top:calc(8px + env(safe-area-inset-top))}
 body.navtop .fab{bottom:calc(24px + env(safe-area-inset-bottom))}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
+.stchip{flex:none;align-self:center;border:1px solid var(--line);background:var(--card2);border-radius:999px;padding:4px 10px;font-weight:600;font-size:12px;margin-right:6px;white-space:nowrap}.stchip.st-encours{background:var(--a1);border-color:var(--a1);color:#fff}
+.projbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:0 0 12px}
 .chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
 .chip.on{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border-color:transparent}
 .progress{height:10px;background:var(--card3);border-radius:99px;overflow:hidden}
@@ -475,7 +477,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.29.0';
+const VERSION='3.30.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -1122,8 +1124,12 @@ function tile(f){
   const n=countOpen(f.id), kids=S.folders.filter(x=>x.parentId===f.id);
   return `<button class="tile" data-a="openFolder" data-id="${f.id}" style="background:${gradOf(f.color)}"><span class="ic">${esc(f.icon||'📁')}</span><span><b>${esc(f.name)}</b>${S.settings.folderFav?` <span data-a="toggleFolderFavorite" data-id="${f.id}" title="${f.favorite?'Retirer des favoris':'Ajouter aux favoris'}" aria-label="${f.favorite?'Retirer des favoris':'Ajouter aux favoris'}" style="font-size:18px;padding:3px">${f.favorite?'⭐':'☆'}</span>`:''}<br><small>${n?n+' à faire':'À jour ✓'}</small></span>${kids.length?`<span class="pills">${kids.map(k=>`<span class="pill" data-a="openFolder" data-id="${k.id}">${esc(k.icon||'📁')} ${esc(k.name)}</span>`).join('')}</span>`:''}</button>`;
 }
+/* Dossiers projet : statut des idées (à faire / en cours ; « fait » = coché) */
+const ST_L={afaire:'À faire',encours:'En cours'};
+const isProj=id=>!!(id&&(S.folders.find(f=>f.id===id)||{}).project);
+const normName=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function itemRow(i){
-  return `<div class="item todo-item ${i.done?'done':''} ${(i.steps&&i.steps.length)||(i.images&&i.images.length)||subAddFor==='item:'+i.id?'top':''}" data-id="${i.id}">${i.done?'':'<span class="handle" aria-label="Déplacer">⠿</span>'}<button class="chk round ${i.done?'on':''}" data-a="toggleItem" data-id="${i.id}" aria-label="${i.done?'Marquer comme non terminée':'Marquer comme terminée'}"></button><div class="grow" data-a="editItem" data-id="${i.id}"><div class="ttl">${i.lvl&&!i.done?`<span class="udot u-${i.lvl==='tres'?'tres':'urgent'}"></span>`:''}${linkify(esc(i.text))}</div>${subList(i,'item')}${i.images&&i.images.length?`<div class="thumbs">${i.images.map(id=>`<img data-img="${id}" data-a="viewImg" data-id="${id}" alt="">`).join('')}</div>`:''}</div><button class="icon-btn sm" data-a="moveItem" data-id="${i.id}" aria-label="Déplacer vers un dossier" title="Déplacer vers un dossier">📁↗</button>${i.done?'':subBtn(i,'item')}</div>`;
+  return `<div class="item todo-item ${i.done?'done':''} ${(i.steps&&i.steps.length)||(i.images&&i.images.length)||subAddFor==='item:'+i.id?'top':''}" data-id="${i.id}">${i.done?'':'<span class="handle" aria-label="Déplacer">⠿</span>'}<button class="chk round ${i.done?'on':''}" data-a="toggleItem" data-id="${i.id}" aria-label="${i.done?'Marquer comme non terminée':'Marquer comme terminée'}"></button>${!i.done&&isProj(i.folderId)?`<button class="stchip st-${i.status==='encours'?'encours':'afaire'}" data-a="cycleStatus" data-id="${i.id}" aria-label="Changer le statut">${ST_L[i.status==='encours'?'encours':'afaire']}</button>`:''}<div class="grow" data-a="editItem" data-id="${i.id}"><div class="ttl">${i.lvl&&!i.done?`<span class="udot u-${i.lvl==='tres'?'tres':'urgent'}"></span>`:''}${linkify(esc(i.text))}</div>${subList(i,'item')}${i.images&&i.images.length?`<div class="thumbs">${i.images.map(id=>`<img data-img="${id}" data-a="viewImg" data-id="${id}" alt="">`).join('')}</div>`:''}</div><button class="icon-btn sm" data-a="moveItem" data-id="${i.id}" aria-label="Déplacer vers un dossier" title="Déplacer vers un dossier">📁↗</button>${i.done?'':subBtn(i,'item')}</div>`;
 }
 let notesSearchOn=false;
 function uncheckFolder(id){ const ids=[id,...descendants(id)]; let n=0; S.items.forEach(i=>{ if(ids.includes(i.folderId)&&i.done){ i.done=false; i.doneAt=null; n++; } }); return n; }
@@ -1142,7 +1148,10 @@ VIEWS.todo=()=>{
   if(!cur&&S.settings.folderFav){const favs=S.folders.filter(f=>f.favorite);if(favs.length)html+=`<section style="margin:10px 0 14px"><div class="sec">⭐ Dossiers favoris <span class="n">${favs.length}</span></div><div class="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${favs.map(tile).join('')}</div></section>`;}
   if(notesSearchOn) html+=`<div style="margin:10px 0"><input id="notesSearch" type="search" class="input" placeholder="🔍 Rechercher dans ce dossier…" aria-label="Rechercher dans les notes et sous-dossiers"></div>`;
   const subs=S.folders.filter(f=>(f.parentId||null)===cur);
-  const items=S.items.filter(i=>(i.folderId||null)===cur), open=items.filter(i=>!i.done), done=items.filter(i=>i.done);
+  const items=S.items.filter(i=>(i.folderId||null)===cur), done=items.filter(i=>i.done), proj=isProj(cur);
+  let open=items.filter(i=>!i.done);
+  if(proj){ const enc=open.filter(i=>i.status==='encours'); open=[...enc,...open.filter(i=>i.status!=='encours')];
+    html+=`<div class="projbar"><span class="small"><b>🧩 Projet</b> · ${enc.length} en cours · ${open.length-enc.length} à faire · ${done.length} fait${done.length>1?'s':''}</span><button class="btn sm primary" data-a="sendClaude">🤖 Envoyer à Claude</button></div>`; }
   if(subs.length) html+=`<div class="tiles ${cur?'subfolder-tiles':''}" id="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${subs.map(tile).join('')}</div>`;
   if(!subs.length&&!items.length) html+=empty('📝','Rien ici pour l\'instant','Écrivez, dictez, prenez une photo ou créez un sous-dossier avec 📁+.');
   if(open.length) html+=`<div class="list" id="itemsList">${open.map(itemRow).join('')}</div>`;
@@ -1670,9 +1679,9 @@ function folderSheet(f,parentId){
   openSheet(isNew?'Nouveau dossier':'Dossier « '+f.name+' »',
     fld('Nom',inp('name',v.name,'text','required autofocus'))+fld('Icône',`<button type="button" class="btn sm ghost" onclick="applySuggestedFolderIcon()">✨ Icône conseillée selon le nom</button><div class="swatches iconpick">${[...new Set([v.icon||'📁',...FOLDER_ICONS])].map(ic=>`<label title="${ic}"><input type="radio" name="icon" value="${esc(ic)}" ${ic===(v.icon||'📁')?'checked':''}><span>${ic}</span></label>`).join('')}</div>`)+
     fld('Couleurs principales',`<div class="swatches">${FOLDER_COLOR_FAMILIES.map((f,i)=>`<label title="${f.name}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE}" onchange="showFolderShades(${i})" ${f.main===gradOf(v.color)?'checked':''}><span style="background:${f.main}"></span></label>`).join('')}</div>`)+fld('Déclinaisons de la couleur choisie',`<div>${FOLDER_COLOR_FAMILIES.map((f,i)=>`<div class="swatches folder-shade-group" style="display:${i===folderFamilyIndex(v.color)?'flex':'none'}" data-family="${i}">${f.shades.map((g,j)=>`<label title="${f.name} — déclinaison ${j+1}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE+j+1}" ${g===gradOf(v.color)?'checked':''}><span style="background:${g}"></span></label>`).join('')}${i===folderFamilyIndex(v.color)&&ALL_GRADS.indexOf(gradOf(v.color))>=FOLDER_COLOR_FAMILIES.length*FOLDER_FAMILY_SIZE?`<label title="Ancienne couleur conservée"><input type="radio" name="color" value="${ALL_GRADS.indexOf(gradOf(v.color))}" checked><span style="background:${gradOf(v.color)}"></span></label>`:''}</div>`).join('')}</div>`)+fld('Dans le dossier',`<select name="parentId">${folderOptions(v.parentId,f?[f.id,...descendants(f.id)]:[])}</select>`)+
-    `<label class="srow"><span class="grow">🏖️ Tout décocher à la fin des vacances<div class="small muted">Le dernier jour des vacances scolaires, les notes cochées de ce dossier (et de ses sous-dossiers) redeviennent à faire.${S.settings.zone?'':' Choisis d\'abord ta zone de vacances dans Réglages.'}</div></span><input type="checkbox" class="sw" name="resetHol" ${v.resetHol?'checked':''}></label>`+(isNew?'':`<button type="button" class="btn sm ghost" data-a="folderUncheck" data-id="${f.id}">↺ Tout décocher maintenant</button>`)+
+    `<label class="srow"><span class="grow">🏖️ Tout décocher à la fin des vacances<div class="small muted">Le dernier jour des vacances scolaires, les notes cochées de ce dossier (et de ses sous-dossiers) redeviennent à faire.${S.settings.zone?'':' Choisis d\'abord ta zone de vacances dans Réglages.'}</div></span><input type="checkbox" class="sw" name="resetHol" ${v.resetHol?'checked':''}></label>`+`<label class="srow"><span class="grow">🧩 Dossier projet<div class="small muted">Chaque note a un statut (à faire, en cours) et le bouton « Envoyer à Claude » transmet la liste triée.</div></span><input type="checkbox" class="sw" name="project" ${v.project?'checked':''}></label>`+(isNew?'':`<button type="button" class="btn sm ghost" data-a="folderUncheck" data-id="${f.id}">↺ Tout décocher maintenant</button>`)+
     '',
-    {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null,resetHol:!!fd.resetHol});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
+    {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null,resetHol:!!fd.resetHol,project:!!fd.project});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
      onDelete:isNew?null:()=>{
        const ids=[f.id,...descendants(f.id)], its=S.items.filter(i=>ids.includes(i.folderId));
        if(!confirm(`Supprimer « ${f.name} »${ids.length>1?', ses '+(ids.length-1)+' sous-dossier(s)':''} et ${plural(its.length,'élément')} ? Action définitive.`)) return;
@@ -2534,6 +2543,20 @@ const A={
     const box=$('#bookRes'); if(box) box.innerHTML=`<div class="small muted">✓ « ${esc(b.title)} » sélectionné${b.authors?' · '+esc(b.authors):''}</div>`;
     if(b.thumb&&!sheetImgs.length){ try{ const r=await fetch(b.thumb); if(r.ok){ const bl=await r.blob(); const ids=await storeImages([new File([bl],'couverture.jpg',{type:bl.type||'image/jpeg'})]); sheetImgs.push(...ids); refreshImgBox(); } }catch(e){} }
   },
+  cycleStatus(id){ const it=S.items.find(i=>i.id===id); if(!it) return; it.status=it.status==='encours'?'afaire':'encours'; save(); render(); },
+  async sendClaude(){
+    const f=S.folders.find(x=>x.id===todoFolder); if(!f) return;
+    const L=S.items.filter(i=>i.folderId===f.id), line=i=>'- '+String(i.text||'').replace(/\s*\n\s*/g,' · ');
+    const enc=L.filter(i=>!i.done&&i.status==='encours'), af=L.filter(i=>!i.done&&i.status!=='encours'), fait=L.filter(i=>i.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0)).slice(0,5);
+    let t=`Projet « ${f.name} » : mes idées notées dans Thêta (${new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})})\n`;
+    if(enc.length) t+=`\nEn cours :\n${enc.map(line).join('\n')}\n`;
+    if(af.length) t+=`\nÀ faire :\n${af.map(line).join('\n')}\n`;
+    if(fait.length) t+=`\nFait récemment :\n${fait.map(line).join('\n')}\n`;
+    if(!enc.length&&!af.length&&!fait.length) t+='\n(Aucune idée pour l\'instant.)\n';
+    t+='\nAnalyse ces idées, trie-les par utilité et effort, et propose-moi par quoi commencer.';
+    if(navigator.share){ try{ await navigator.share({title:'Projet '+f.name,text:t}); return; }catch(e){ if(e&&e.name==='AbortError') return; } }
+    try{ await navigator.clipboard.writeText(t); toast('📋 Copié : colle-le dans Claude'); }catch(e){ shareSheet(t,[],'À copier pour Claude'); }
+  },
   toggleItem(id){ const it=S.items.find(i=>i.id===id); if(!it) return; it.done=!it.done; it.doneAt=it.done?Date.now():null; save(); render(); },
   editItem(id){ const it=S.items.find(i=>i.id===id); if(it) itemSheet(it); },
   moveItem(id){const it=S.items.find(i=>i.id===id);if(!it)return;openSheet('Déplacer la note',fld('Destination',`<select name="folderId">${folderOptions(it.folderId)}</select>`),{onSave(fd){const dest=fd.folderId||null;if(dest===(it.folderId||null)){closeSheet();return false;}it.folderId=dest;save();render();toast('📁 Note déplacée');}});},
@@ -2773,17 +2796,28 @@ async function handleShared(){
     shareSheet((meta.text||'').trim(),ids);
   }catch(e){toast('⚠️ Partage : '+e.message)}
 }
-function shareSheet(text,ids,ttl){
+function shareSheet(text,ids,ttl,opt={}){
   sheetImgs=ids.slice();
+  const want=opt.folderName?normName(opt.folderName):'', hit=want?S.folders.find(f=>normName(f.name)===want):null;
+  const newOpt=want&&!hit?`<option value="__new" selected>＋ Nouveau dossier projet « ${esc(opt.folderName.trim())} »</option>`:'';
+  const multi=String(text).split(/\n/).filter(l=>l.trim()).length>1;
   openSheet(ttl||'Reçu dans Thêta',
     fld('Texte',`<textarea name="text" style="min-height:90px">${esc(text)}</textarea>`)+(ids.length?fld('Photos',imgBoxHTML()):'')+
     fld('Ranger comme',seg('dest',[['note','📝 Note'],['task','✅ Tâche'],['auto','✨ Thêta trie']],'note'))+
-    fld('Dossier (pour une note)',`<select name="folder">${folderOptions(null)}</select>`),
+    fld('Dossier (pour une note)',`<select name="folder">${newOpt}${folderOptions(hit?hit.id:(newOpt?'__new':null))}</select>`)+
+    (multi?fld('Découpage (pour une note)',seg('split',[['1','Une note par ligne'],['0','Une seule note']],opt.fromClaude?'1':'0')):''),
     {saveLabel:'Ranger',onSave(fd){
       const t=fd.text.trim(), first=t.split(/\n/)[0].slice(0,120);
       if(fd.dest==='task'){ if(!t&&!sheetImgs.length) return false; if(!t){toast('Donnez un intitulé à la tâche');return false} const o={id:uid(),title:first,notes:t.slice(first.length).trim(),date:today(),time:'',priority:'moyenne',duration:S.settings.defaultDuration,done:false,created:Date.now(),recur:'none',images:sheetImgs.slice()}; S.tasks.push(o); markPending(o,'task'); toast('✅ Tâche créée'); }
       else if(fd.dest==='auto'&&t){ closeSheet(); if(sheetImgs.length) S.items.push({id:uid(),folderId:fd.folder||null,text:first,done:false,images:sheetImgs.slice(),created:Date.now()}); analyzeText(t); view='jour'; sub=null; save(); render(); return; }
-      else { if(!t&&!sheetImgs.length) return false; S.items.push({id:uid(),folderId:fd.folder||null,text:t||'Photo partagée',done:false,images:sheetImgs.slice(),created:Date.now()}); toast('📝 Ajouté aux notes'); }
+      else { if(!t&&!sheetImgs.length) return false;
+        let fid=fd.folder||null;
+        if(fid==='__new'){ const nf={id:uid(),name:opt.folderName.trim(),icon:'🧩',color:ALL_GRADS[Math.floor(Math.random()*ALL_GRADS.length)],parentId:null,project:true}; S.folders.push(nf); fid=nf.id; }
+        else if(fid&&opt.fromClaude){ const pf=S.folders.find(f=>f.id===fid); if(pf) pf.project=true; }
+        const proj=isProj(fid);
+        const lines=fd.split==='1'?t.split(/\n/).map(l=>l.replace(/^\s*(?:[-•*–]|\d+[.)])\s+/,'').trim()).filter(Boolean):[t||'Photo partagée'];
+        lines.forEach((l,k)=>S.items.push({id:uid(),folderId:fid,text:l,done:false,images:k?[]:sheetImgs.slice(),created:Date.now()+k,...(proj?{status:'afaire'}:{})}));
+        toast(lines.length>1?`📝 ${lines.length} notes ajoutées`:'📝 Ajouté aux notes'); if(fid){ view='todo'; sub=null; todoFolder=fid; } }
       save(); render();
     }});
   if(ids.length) refreshImgBox();
@@ -2797,6 +2831,7 @@ function init(){
   view=TABS[p]?p:(S.settings.tabOrder[0]||'jour');
   if(p==='notes'){view='jour'}
   render();
+  { const Q=new URLSearchParams(location.search); if(Q.has('add')){ const tx=Q.get('add')||'', dn=Q.get('dossier')||''; history.replaceState(null,'',location.pathname); setTimeout(()=>shareSheet(tx,[],'Reçu de Claude',{folderName:dn,fromClaude:true}),300); } }
   if(new URLSearchParams(location.search).has('shared')){ history.replaceState(null,'',location.pathname); setTimeout(handleShared,300); }
   if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
     const hadCtrl=!!navigator.serviceWorker.controller; let reloaded=false;

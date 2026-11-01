@@ -3,6 +3,11 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.30
+- **Lien « Ajouter à Thêta »** : `…/Theta-v2/?add=TEXTE&dossier=NOM` ouvre la fiche « Reçu de Claude », préremplie, avec le dossier présélectionné (ou proposé à la création s'il n'existe pas).
+- **Une note par ligne** : à la réception d'un texte de plusieurs lignes, choix entre une note par ligne ou une seule note.
+- **Dossiers projet** (⋯ du dossier › 🧩 Dossier projet) : chaque note a un statut « À faire » ou « En cours » (toucher l'étiquette pour changer), les notes en cours passent en tête, et « 🤖 Envoyer à Claude » partage la liste triée.
+
 ## Nouveautés v3.1
 - Écran Jour : semaine dans le bandeau du haut, « Ma journée » de 8 h à 20 h avec événements et créneaux libres (toucher un créneau pour y créer une tâche ou un événement), glisser fluide entre les jours, bloc « Ce mois-ci » séparé.
 - Tâches : échéance « un mois » (ex. « préparer les bulletins en novembre »), photos, sous-étapes visibles avec ＋ et ✕ rapides.
