@@ -3,6 +3,9 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.31
+- **Tâches datées depuis un lien** : `…/Theta-v2/?add=TEXTE&type=tache&date=demain` ouvre « Reçu de Claude » avec « ✅ Tâche » présélectionné et la date remplie (`demain`, `aujourdhui`, `apres-demain` ou `AAAA-MM-JJ`) ; une tâche par ligne. La date reste modifiable dans la fiche.
+
 ## Nouveautés v3.30
 - **Lien « Ajouter à Thêta »** : `…/Theta-v2/?add=TEXTE&dossier=NOM` ouvre la fiche « Reçu de Claude », préremplie, avec le dossier présélectionné (ou proposé à la création s'il n'existe pas).
 - **Une note par ligne** : à la réception d'un texte de plusieurs lignes, choix entre une note par ligne ou une seule note.

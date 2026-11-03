@@ -477,7 +477,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.30.0';
+const VERSION='3.31.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -2796,6 +2796,13 @@ async function handleShared(){
     shareSheet((meta.text||'').trim(),ids);
   }catch(e){toast('⚠️ Partage : '+e.message)}
 }
+/* v3.31 : date d'un lien « Ajouter à Thêta » (&date=demain, aujourdhui, apres-demain ou AAAA-MM-JJ) */
+function linkDate(v){ const n=norm(String(v||'')).replace(/['’\s_-]+/g,'');
+  if(/^\d{4}-\d{2}-\d{2}$/.test(String(v).trim())) return String(v).trim();
+  if(n==='demain') return addDays(today(),1);
+  if(n==='apresdemain') return addDays(today(),2);
+  if(n==='aujourdhui') return today();
+  return ''; }
 function shareSheet(text,ids,ttl,opt={}){
   sheetImgs=ids.slice();
   const want=opt.folderName?normName(opt.folderName):'', hit=want?S.folders.find(f=>normName(f.name)===want):null;
@@ -2803,12 +2810,17 @@ function shareSheet(text,ids,ttl,opt={}){
   const multi=String(text).split(/\n/).filter(l=>l.trim()).length>1;
   openSheet(ttl||'Reçu dans Thêta',
     fld('Texte',`<textarea name="text" style="min-height:90px">${esc(text)}</textarea>`)+(ids.length?fld('Photos',imgBoxHTML()):'')+
-    fld('Ranger comme',seg('dest',[['note','📝 Note'],['task','✅ Tâche'],['auto','✨ Thêta trie']],'note'))+
+    fld('Ranger comme',seg('dest',[['note','📝 Note'],['task','✅ Tâche'],['auto','✨ Thêta trie']],opt.dest||'note'))+
+    fld('Date (pour une tâche)',`<input type="date" name="tdate" value="${esc(opt.date||today())}">`)+
     fld('Dossier (pour une note)',`<select name="folder">${newOpt}${folderOptions(hit?hit.id:(newOpt?'__new':null))}</select>`)+
-    (multi?fld('Découpage (pour une note)',seg('split',[['1','Une note par ligne'],['0','Une seule note']],opt.fromClaude?'1':'0')):''),
+    (multi?fld('Découpage',seg('split',[['1','Un élément par ligne'],['0','Un seul élément']],opt.fromClaude?'1':'0')):''),
     {saveLabel:'Ranger',onSave(fd){
       const t=fd.text.trim(), first=t.split(/\n/)[0].slice(0,120);
-      if(fd.dest==='task'){ if(!t&&!sheetImgs.length) return false; if(!t){toast('Donnez un intitulé à la tâche');return false} const o={id:uid(),title:first,notes:t.slice(first.length).trim(),date:today(),time:'',priority:'moyenne',duration:S.settings.defaultDuration,done:false,created:Date.now(),recur:'none',images:sheetImgs.slice()}; S.tasks.push(o); markPending(o,'task'); toast('✅ Tâche créée'); }
+      if(fd.dest==='task'){ if(!t&&!sheetImgs.length) return false; if(!t){toast('Donnez un intitulé à la tâche');return false}
+        const d=/^\d{4}-\d{2}-\d{2}$/.test(fd.tdate||'')?fd.tdate:today();
+        const parts=multi&&fd.split==='1'?t.split(/\n/).map(l=>l.replace(/^\s*(?:[-•*–]|\d+[.)])\s+/,'').trim()).filter(Boolean):[t];
+        parts.forEach((p,k)=>{ const f=p.split(/\n/)[0].slice(0,120); const o={id:uid(),title:f,notes:p.slice(f.length).trim(),date:d,time:'',priority:'moyenne',duration:S.settings.defaultDuration,done:false,created:Date.now()+k,recur:'none',images:k?[]:sheetImgs.slice()}; S.tasks.push(o); markPending(o,'task'); });
+        toast(parts.length>1?`✅ ${parts.length} tâches créées`:'✅ Tâche créée'); }
       else if(fd.dest==='auto'&&t){ closeSheet(); if(sheetImgs.length) S.items.push({id:uid(),folderId:fd.folder||null,text:first,done:false,images:sheetImgs.slice(),created:Date.now()}); analyzeText(t); view='jour'; sub=null; save(); render(); return; }
       else { if(!t&&!sheetImgs.length) return false;
         let fid=fd.folder||null;
@@ -2831,7 +2843,7 @@ function init(){
   view=TABS[p]?p:(S.settings.tabOrder[0]||'jour');
   if(p==='notes'){view='jour'}
   render();
-  { const Q=new URLSearchParams(location.search); if(Q.has('add')){ const tx=Q.get('add')||'', dn=Q.get('dossier')||''; history.replaceState(null,'',location.pathname); setTimeout(()=>shareSheet(tx,[],'Reçu de Claude',{folderName:dn,fromClaude:true}),300); } }
+  { const Q=new URLSearchParams(location.search); if(Q.has('add')){ const tx=Q.get('add')||'', dn=Q.get('dossier')||'', ty=norm(Q.get('type')||''), dt=linkDate(Q.get('date')||''); history.replaceState(null,'',location.pathname); setTimeout(()=>shareSheet(tx,[],'Reçu de Claude',{folderName:dn,fromClaude:true,dest:/^tache|^task/.test(ty)?'task':'',date:dt}),300); } }
   if(new URLSearchParams(location.search).has('shared')){ history.replaceState(null,'',location.pathname); setTimeout(handleShared,300); }
   if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
     const hadCtrl=!!navigator.serviceWorker.controller; let reloaded=false;
