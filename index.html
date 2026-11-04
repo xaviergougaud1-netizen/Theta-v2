@@ -101,6 +101,10 @@ body.navtop .fab{bottom:calc(24px + env(safe-area-inset-bottom))}
 .projbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:0 0 12px}
 .chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
 .chip.on{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border-color:transparent}
+.cpcal{border:1px solid var(--line);border-radius:14px;padding:8px;margin-bottom:10px}.cphead{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.cpgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}.cpgrid small{opacity:.6;font-size:11px}
+.cpd{aspect-ratio:1;min-height:36px;border:0;border-radius:10px;background:transparent;color:inherit;font:inherit;font-weight:600}.cpd.hol{background:color-mix(in srgb,#f3d36b 22%,transparent)}
+.cpd.orig{box-shadow:inset 0 0 0 1.5px var(--a1)}.cpd.on{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff}.cpinfo{margin-top:6px}
 .progress{height:10px;background:var(--card3);border-radius:99px;overflow:hidden}
 .progress>i{display:block;height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:99px;transition:width .5s}
 .hero{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border-radius:24px;padding:18px;box-shadow:0 12px 28px color-mix(in srgb,var(--a1) 35%,transparent)}
@@ -272,8 +276,9 @@ body.vjour #main{touch-action:pan-y}
 .bilan-g{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
 .bilan-g b{display:block;font-size:20px}
 .bilan-g small{font-size:11px;opacity:.7}
-#propDates .chip small{opacity:.75;font-weight:500}
-#propDates{flex-wrap:wrap;overflow:visible;gap:6px}
+.qj{display:flex;flex-wrap:wrap;gap:6px}.qj label{display:contents}.qj input{position:absolute;opacity:0;pointer-events:none}
+.qj span{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 12px;font-weight:600;font-size:14px;cursor:pointer}
+.qj span small{opacity:.7;font-weight:500}.qj input:checked+span{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border-color:transparent}.qj input:focus-visible+span{outline:2px solid var(--a1);outline-offset:2px}
 .crit .seg label{min-width:18%}
 .agday-h{display:flex;justify-content:space-between;align-items:center;padding:10px 6px 6px;font-size:13px;font-weight:750;opacity:.9}
 .agday-h span{font-size:12px;opacity:.6;font-weight:650}
@@ -477,7 +482,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.31.0';
+const VERSION='3.34.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -897,14 +902,6 @@ function freeMin(d){
   return Math.max(0,tot-planned);
 }
 // Dates proposées pour une tâche travail selon son urgence
-function proposeDates(urg,dur){
-  const t=today(), out=[], add=(d,why)=>{if(d&&!out.some(o=>o[0]===d))out.push([d,why])};
-  const nextWd=wd=>{for(let i=0;i<14;i++){const d=addDays(t,i);if(parseD(d).getDay()===wd&&(i>0||freeMin(d)>=dur))return d}};
-  if(urg==='tres') add(freeMin(t)>=dur?t:addDays(t,1),'');
-  else { add(nextWd(3),''); add(nextWd(5),''); }
-  if(urg!=='tres') for(let i=0;i<=7;i++){const d=addDays(t,i); if(parseD(d).getDay()===2&&hasDecharge(d)){add(d,'décharge');break}}
-  return out.sort((a,b)=>a[0].localeCompare(b[0]));
-}
 const dayShort=d=>{const D=parseD(d);return d===today()?'Aujourd\'hui':d===addDays(today(),1)?'Demain':cap(JOURS[D.getDay()].slice(0,3))+'. '+D.getDate()};
 // Propose un horaire pour les tâches sans heure, dans les créneaux libres du jour d
 function suggest(d){
@@ -1076,7 +1073,7 @@ VIEWS.jour=()=>{
   if(isToday&&reportable.length>1) html+=`<button class="btn sm block" data-a="reportPendingTasks" style="margin-bottom:8px">↪ Reporter ${reportable.length} tâches restantes à demain</button>`;
   if(open.length) html+=sec(isToday?'Tâches du jour':'Tâches',open.length)+taskCard(open);
   if(late.length||lateR.length) html+=sec('En retard',late.length+lateR.length)+`<div class="card agcard"><div class="list">${late.map(taskRowLite).join('')}${lateR.map(remRow).join('')}</div></div>`;
-  html+=sec('Ma journée')+dayTimeline(t,isToday,sug);
+  html+=sec('Ma journée')+dayTimeline(t,isToday,S.settings.daySug===false?[]:sug);
   if(sug.length>1) html+=`<button class="btn sm primary block" data-a="planAll" data-d="${t}" style="margin-top:0">✨ Caser automatiquement ${plural(sug.length,'tâche')}</button>`;
   if(isToday&&S.tasks.some(x=>x.date===t&&x.time&&!x.done&&toMin(x.time)>h*60+now.getMinutes())) html+=`<button class="btn sm block" data-a="replanDay" data-d="${t}" style="margin-top:6px">🔄 Réorganiser le reste de la journée</button>`;
   if(monthT.length) html+=sec('🗓️ Ce mois-ci · '+fmtMonth(tm),monthT.length)+taskCard(monthT);
@@ -1187,7 +1184,7 @@ function agendaDayView(){
   const t=agCur(), hol=holidayOn(t);
   return agendaNav(fmtLong(t)+(t===today()?' · aujourd\'hui':''))
     +sec(fmtLong(t),agTasksOn(t).length||null)+(agTasksOn(t).length?agTaskList(t):'<div class="small muted agw-empty">Aucune tâche ce jour-là</div>')
-    +dayTimeline(t,t===today(),suggest(t));
+    +dayTimeline(t,t===today(),[]); // pas de suggestions 💡 dans l'agenda (elles restent sur l'écran Jour)
 }
 function agendaWeekView(){
   const t=agCur(), D=parseD(t), mon=addDays(t,-((D.getDay()+6)%7)), M=parseD(mon), tod=today();
@@ -1432,7 +1429,7 @@ SUBS.reglages=()=>{
   html+=`<div class="sub-h">Icône de l'application</div>`+`<div class="card"><div class="iconrow">${['jour','taches','todo','agenda'].map(k=>`<button class="icsel ${iconEdit===k?'on':''}" data-a="iconEdit" data-id="${k}"><span>${tabIcon(k)}</span><small>${TABS[k][1]}</small></button>`).join('')}</div>${iconEdit?`<div class="small muted" style="margin:12px 0 2px">Choisissez l'icône de « ${TABS[iconEdit][1]} » :</div><div class="iconpick">${(TAB_ICONS[iconEdit]||[]).map(ic=>`<button type="button" class="${tabIcon(iconEdit)===ic?'on':''}" data-a="setTabIcon" data-id="${iconEdit}|${ic}">${ic}</button>`).join('')}</div>`:'<div class="small muted" style="margin-top:10px">Touchez une icône pour voir les propositions.</div>'}</div>`;
   const dayChips=(key,pre)=>`<div class="chips">${[[1,'Lun'],[2,'Mar'],[3,'Mer'],[4,'Jeu'],[5,'Ven']].map(([n,l])=>`<button class="chip ${(s[key]||[]).includes(n)?'on':''}" data-a="toggleDay" data-id="${pre}:${n}">${l}</button>`).join('')}</div>`;
   html+=sec('Emploi du temps de l\'école')+`<div class="card"><div class="fld"><span>🏫 Jours de classe</span>${dayChips('classDays','class')}</div><div class="row2"><label class="fld"><span>Début de la classe</span><input type="time" data-c="setting" data-f="classStart" value="${s.classStart||'09:00'}"></label><label class="fld"><span>Fin de la classe</span><input type="time" data-c="setting" data-f="classEnd" value="${s.classEnd||'16:45'}"></label></div><div class="srow"><span class="grow">🍽️ Pause de midi libre</span><input type="checkbox" class="sw" data-c="setting" data-f="lunchFree" ${s.lunchFree!==false?'checked':''}></div><div class="row2"><label class="fld"><span>Début de la pause</span><input type="time" data-c="setting" data-f="lunchStart" value="${s.lunchStart||'12:15'}"></label><label class="fld"><span>Fin de la pause</span><input type="time" data-c="setting" data-f="lunchEnd" value="${s.lunchEnd||'13:00'}"></label></div><div class="fld"><span>🧭 Jours de direction</span>${dayChips('directionDays','dir')}</div><label class="fld"><span>Mot repéré dans l'agenda pour la décharge</span><input type="text" data-c="setting" data-f="dechargeKw" value="${esc(s.dechargeKw||'')}" placeholder="décharge"></label><div class="small muted">Un jour de classe où l'agenda contient un événement avec ce mot devient un jour de direction. Pendant les vacances, il n'y a pas de classe.</div></div>`;
-  html+=sec('Organisation de la journée')+`<div class="card"><div class="srow"><div class="grow">Agenda jour compact<div class="small muted">Affiche davantage d'heures à l'écran sur l'accueil</div></div><input type="checkbox" class="sw" data-c="setting" data-f="homeCompact" ${s.homeCompact!==false?'checked':''}></div><label class="fld"><span>Vacances scolaires affichées dans l'agenda</span><select data-c="setting" data-f="zone">${[['','Ne pas afficher'],['Zone A','Zone A'],['Zone B','Zone B'],['Zone C','Zone C'],['Corse','Corse']].map(([v,l])=>`<option value="${v}" ${s.zone===v?'selected':''}>${l}</option>`).join('')}</select></label><div class="row2"><label class="fld"><span>Début de journée</span><input type="time" data-c="setting" data-f="dayStart" value="${s.dayStart}"></label><label class="fld"><span>Fin de journée</span><input type="time" data-c="setting" data-f="dayEnd" value="${s.dayEnd}"></label></div><label class="fld"><span>Durée par défaut d'une tâche</span><select data-c="setting" data-f="defaultDuration">${[15,30,45,60,90,120].map(v=>`<option value="${v}" ${+s.defaultDuration===v?'selected':''}>${fmtDur(v)}</option>`).join('')}</select></label></div>`;
+  html+=sec('Organisation de la journée')+`<div class="card"><div class="srow"><div class="grow">Agenda jour compact<div class="small muted">Affiche davantage d'heures à l'écran sur l'accueil</div></div><input type="checkbox" class="sw" data-c="setting" data-f="homeCompact" ${s.homeCompact!==false?'checked':''}></div><div class="srow"><div class="grow">💡 Suggestions dans les créneaux libres<div class="small muted">Propose sur l'écran Jour un horaire pour les tâches sans heure</div></div><input type="checkbox" class="sw" data-c="setting" data-f="daySug" ${s.daySug!==false?'checked':''}></div><label class="fld"><span>Vacances scolaires affichées dans l'agenda</span><select data-c="setting" data-f="zone">${[['','Ne pas afficher'],['Zone A','Zone A'],['Zone B','Zone B'],['Zone C','Zone C'],['Corse','Corse']].map(([v,l])=>`<option value="${v}" ${s.zone===v?'selected':''}>${l}</option>`).join('')}</select></label><div class="row2"><label class="fld"><span>Début de journée</span><input type="time" data-c="setting" data-f="dayStart" value="${s.dayStart}"></label><label class="fld"><span>Fin de journée</span><input type="time" data-c="setting" data-f="dayEnd" value="${s.dayEnd}"></label></div><label class="fld"><span>Durée par défaut d'une tâche</span><select data-c="setting" data-f="defaultDuration">${[15,30,45,60,90,120].map(v=>`<option value="${v}" ${+s.defaultDuration===v?'selected':''}>${fmtDur(v)}</option>`).join('')}</select></label></div>`;
   html+=sec('Synchronisation & notifications')+`<div class="card"><button class="srow" style="width:100%;background:none;border:0;text-align:left;padding:10px 0" data-a="goSub" data-id="google"><span class="grow">🔗 Google Agenda</span><span class="muted">${s.clientId?(tokValid()?'Connecté':'Configuré'):'À configurer'} →</span></button><div class="srow"><span class="grow">🔔 Notifications des rappels<div class="small muted">Affichées quand l'app est ouverte ou en arrière-plan récent</div></span>${'Notification' in window?(s.notif&&Notification.permission==='granted'?'<span class="tag ok">Activées</span>':'<button class="btn sm primary" data-a="notifOn">Activer</button>'):'<span class="small muted">Non disponible</span>'}</div></div>`;
   html+=sec('Sauvegarde')+`<div class="card"><div class="small muted">Vos données restent sur ce téléphone. Exportez-les régulièrement (fichier .json avec images) pour ne rien perdre.${s.lastBackup?' Dernier export : '+fmtDate(iso(new Date(s.lastBackup)))+'.':''}</div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" data-a="export">💾 Exporter</button><button class="btn ghost" data-a="import">📂 Importer</button></div><div class="small muted" id="usage" style="margin-top:10px"></div></div>`;
   html+=sec('⚠️ Zone sensible')+`<div class="card"><button class="btn ghost danger" data-a="resetAll">Tout effacer et repartir de zéro</button></div><p class="small muted" style="text-align:center;margin-top:18px">Thêta ${VERSION} · 100 % local, hors ligne</p>`;
@@ -1480,36 +1477,31 @@ function removeUndo(key,obj,label){
 }
 
 window.thetaCat=el=>{const c=el.querySelector('input:checked');if(!c)return;const w=c.value==='travail';$('#wWork').style.display=w?'':'none';$('#wPerso').style.display=w?'none':''};
-window.thetaProp=()=>{
-  const box=$('#propDates'); if(!box) return;
-  const f=$('#shForm'), val=n=>{const c=f.querySelector(`[name=${n}]:checked`);return c?c.value:''};
-  const urg=val('urg')||'non', dur=+val('dur')||30, due=(f.querySelector('[name=due]')||{}).value;
-  const cur=val('when')==='day'?(f.querySelector('[name=date]')||{}).value:'';
-  let L=proposeDates(urg,dur); if(due) L=L.filter(([d])=>d<=due);
-  box.innerHTML=L.length?L.map(([d,why])=>{const fm=freeMin(d);return `<button type="button" class="chip ${d===cur?'on':''}" data-a="pickDate" data-id="${d}">${dayShort(d)}${why?' · '+why:''}<small> · ${fm?fmtDur(fm)+' libre'+(fm>1?'s':''):'complet'}</small></button>`}).join(''):'<span class="small muted">Aucune date avant la limite : mets-la aujourd\'hui.</span>';
-};
-window.thetaWhen=el=>{const c=el.querySelector('input:checked');if(!c)return;const v=c.value;$('#wDay').style.display=v==='day'?'':'none';$('#wMonth').style.display=v==='month'?'':'none'};
+// « 📅 Quel jour ? » : un seul jour où faire la tâche (raccourcis, jour choisi, un mois ou sans date)
+function nextDow(dow){const n=((dow-parseD(today()).getDay()+7)%7)||7;return addDays(today(),n)} // toujours le suivant : mercredi → mercredi prochain
+function qjDate(k){return {today:today(),tomorrow:addDays(today(),1),wed:nextDow(3),sun:nextDow(0)}[k]||''}
+function qjOf(v){if(v.month)return 'month';if(!v.date)return 'none';for(const k of ['today','tomorrow','wed','sun'])if(qjDate(k)===v.date)return k;return 'pick'}
+window.thetaWhen=el=>{const c=el.querySelector('input:checked');if(!c)return;const k=c.value;$('#wDay').style.display=k==='month'||k==='none'?'none':'';$('#wDate').style.display=k==='pick'?'':'none';$('#wMonth').style.display=k==='month'?'':'none'};
 function taskSheet(x,preset){
   const isNew=!x, pr=preset||{};
   const defDate=pr.date!==undefined?pr.date:(view==='taches'&&taskFilter!=='today'?'':(view==='jour'?addDays(today(),jourOff):today()));
   const v=x||{title:'',date:defDate,time:pr.time||'',priority:'moyenne',duration:S.settings.defaultDuration,cat:S.settings.lastCat||'travail',urg:'non',imp:false};
-  const when=v.month?'month':(v.date?'day':'none'), cat=v.cat||'perso';
+  const qj=qjOf(v), cat=v.cat||'perso', dd=k=>{const D=parseD(qjDate(k));return ` <small>${D.getDate()}</small>`};
   sheetSteps=((x&&x.steps)||[]).map(st=>({...st})); sheetImgs=[...((x&&x.images)||pr.images||[])];
   if(isNew) sheetQuiet=true; // le clavier ne s'ouvre qu'avec le bouton ⌨️
   openSheet(isNew?'Nouvelle tâche':'Modifier la tâche',
     fld('Intitulé',inp('title',v.title,'text','autofocus placeholder="Facultatif si photo"'))+
     `<div onchange="thetaCat(this)">${fld('Catégorie',seg('cat',[['travail','💼 Travail'],['perso','🏠 Perso']],cat))}</div>`+
-    `<div id="wWork" class="crit" onchange="thetaProp()" style="${cat==='travail'?'':'display:none'}">`+
+    `<div id="wWork" class="crit" style="${cat==='travail'?'':'display:none'}">`+
       fld('Urgence',seg('urg',Object.entries(URG).map(([k,[i,l]])=>[k,`<span class="udot u-${k}"></span>${l}`]),v.urg||'non'))+
       `<div class="small muted crit-hint"><span class="udot u-tres"></span>dans la journée · <span class="udot u-urgent"></span>un mercredi ou un vendredi · <span class="udot u-non"></span>dès qu'un créneau se libère</div>`+
       fld('Importance',seg('imp',[['1','⭐ Important'],['0','Pas important']],v.imp?'1':'0'))+
       fld('Temps nécessaire',seg('dur',[['5','< 5 min'],['15','5–15'],['30','15–30'],['60','½–1 h'],['90','> 1 h']],String(durBucket(v.duration))))+
-      fld('⏰ Date limite (facultatif)',inp('due',v.due||'','date'))+
-      `<div class="fld"><span>📅 Quand la faire ?</span><div id="propDates" class="chips"></div></div>`+
+      (v.due?`<div class="srow small" id="dueRow"><span class="grow muted">⏰ Ancienne date limite : ${fmtDate(v.due)}</span><input type="hidden" name="due" value="${v.due}"><button type="button" class="btn sm ghost" data-a="clearDue">Retirer</button></div>`:'')+
     `</div>`+
-    fld('Échéance',`<div onchange="thetaWhen(this)">${seg('when',[['day','📅 Un jour'],['month','🗓️ Un mois'],['none','Sans date']],when)}</div>`)+
-    `<div class="row2" id="wDay" style="${when==='day'?'':'display:none'}">${fld('Date',inp('date',v.date||today(),'date'))}${fld('Heure (optionnel)',inp('time',v.time,'time'))}</div>`+
-    `<div id="wMonth" style="${when==='month'?'':'display:none'}">${fld('Mois',inp('month',v.month||curMonth(),'month'))}</div>`+
+    `<div class="fld"><span>📅 Quel jour ?</span><div class="qj" onchange="thetaWhen(this)">${[['today','Aujourd\'hui'],['tomorrow','Demain'+dd('tomorrow')],['wed','Mercredi'+dd('wed')],['sun','Dimanche'+dd('sun')],['pick','📅 Jour choisi'],['month','🗓️ Un mois'],['none','Sans date']].map(([k,l])=>`<label><input type="radio" name="qj" value="${k}" ${k===qj?'checked':''}><span>${l}</span></label>`).join('')}</div></div>`+
+    `<div class="row2" id="wDay" style="${qj==='month'||qj==='none'?'display:none':''}"><div id="wDate" style="${qj==='pick'?'':'display:none'}">${fld('Date',inp('date',v.date||addDays(today(),1),'date'))}</div>${fld('Heure (optionnel)',inp('time',v.time,'time'))}</div>`+
+    `<div id="wMonth" style="${qj==='month'?'':'display:none'}">${fld('Mois',inp('month',v.month||curMonth(),'month'))}</div>`+
     `<div id="wPerso" style="${cat==='travail'?'display:none':''}">`+
       fld('Priorité',seg('priority',[['haute','🔴 Haute'],['moyenne','🟠 Moyenne'],['basse','🟢 Basse']],v.priority))+
       fld('Durée estimée',selF('duration',[15,30,45,60,90,120,180,240].map(m=>[m,fmtDur(m)]),v.duration||30))+
@@ -1521,39 +1513,50 @@ function taskSheet(x,preset){
     (x&&x.noSync?`<label class="srow"><span class="grow small">Ne plus synchroniser avec Google (supprimée de l'agenda)</span><input type="checkbox" class="sw" name="noSync" checked></label>`:''),
     {onSave(fd){
       let title=fd.title.trim(); if(!title){ if(!sheetImgs.length) return false; title='Photo'; }
-      const o=x||{id:uid(),done:false,created:Date.now()}, w=fd.when||'day';
-      let date=w==='day'?(fd.date||today()):'', recur=w==='month'?'none':fd.recur;
+      const o=x||{id:uid(),done:false,created:Date.now()}, k=fd.qj||'today', w=k==='month'||k==='none'?k:'day';
+      let date=w==='day'?(k==='pick'?(fd.date||today()):qjDate(k)):'', recur=w==='month'?'none':fd.recur;
       if(w==='none'&&recur!=='none') date=today();
       commitImgs(o);
       const work=fd.cat==='travail';
       Object.assign(o,{title,date,time:w==='day'?fd.time:'',month:w==='month'?(fd.month||curMonth()):null,notes:fd.notes.trim(),recur,steps:readSteps(),cat:work?'travail':'perso'});
-      if(work) Object.assign(o,{urg:fd.urg||'non',imp:fd.imp==='1',duration:+fd.dur||30,due:fd.due||null,priority:{tres:'haute',urgent:'moyenne',non:'basse'}[fd.urg||'non']});
+      if(work) Object.assign(o,{urg:fd.urg||'non',imp:fd.imp==='1',duration:+fd.dur||30,due:fd.due||null /* plus saisie : on garde l'ancienne sauf si « Retirer » */,priority:{tres:'haute',urgent:'moyenne',non:'basse'}[fd.urg||'non']});
       else Object.assign(o,{priority:fd.priority,duration:+fd.duration});
       S.settings.lastCat=o.cat;
       if(x&&x.noSync&&!fd.noSync) o.noSync=false;
       if(isNew) S.tasks.push(o);
       markPending(o,'task'); save(); render(); toast(isNew?'✅ Tâche ajoutée':'Tâche modifiée');
     },onDelete:isNew?null:()=>{closeSheet();removeUndo('tasks',x,'Tâche')}});
-  refreshImgBox(); thetaProp();
+  refreshImgBox();
 }
 function eventSheet(e,preset){
   const isNew=!e;
   if(e&&e.readonly){
-    openSheet(e.title,`<div class="card" style="box-shadow:none"><div class="srow">📅 ${fmtLong(e.date)}${e.endDate&&e.endDate!==e.date?' → '+fmtLong(e.endDate):''}</div>${e.start?`<div class="srow">🕐 ${e.start} – ${e.end||''}</div>`:''}${e.place?`<a class="srow maplink" href="${mapsURL(e.place)}" target="_blank" rel="noopener">📍 ${esc(e.place)} · ouvrir dans Maps</a>`:''}${e.notes?`<div class="srow small">${linkify(esc(e.notes))}</div>`:''}<div class="srow small muted">🔒 Agenda « ${esc(e.calName||'')} » en lecture seule</div></div>`);
+    openSheet(e.title,`<div class="card" style="box-shadow:none"><div class="srow">📅 ${fmtLong(e.date)}${e.endDate&&e.endDate!==e.date?' → '+fmtLong(e.endDate):''}</div>${e.start?`<div class="srow">🕐 ${e.start} – ${e.end||''}</div>`:''}${e.place?`<a class="srow maplink" href="${mapsURL(e.place)}" target="_blank" rel="noopener">📍 ${esc(e.place)} · ouvrir dans Maps</a>`:''}${e.notes?`<div class="srow small">${linkify(esc(e.notes))}</div>`:''}<div class="srow small muted">🔒 Agenda « ${esc(e.calName||'')} » en lecture seule</div></div><button type="button" class="btn ghost" data-a="copyEvent" data-id="${e.id}">📄 Copier à une autre date</button>`);
     return;
   }
   const pd=preset&&typeof preset==='object'?preset:{date:preset};
-  const v=e||{title:'',date:pd.date||today(),start:pd.start||'',end:pd.start?fromMin(Math.min(toMin(pd.start)+60,1439)):'',place:'',notes:'',calId:S.settings.targetCal};
+  const cp=pd.copy; // copie d'un événement : mêmes champs, nouvel événement, date à choisir
+  const v=e||(cp?Object.assign({},cp):null)||{title:'',date:pd.date||today(),start:pd.start||'',end:pd.start?fromMin(Math.min(toMin(pd.start)+60,1439)):'',place:'',notes:'',calId:S.settings.targetCal};
   const cals=S.settings.calendars.filter(c=>!['reader','freeBusyReader'].includes(c.role));
-  openSheet(isNew?'Nouvel événement':'Modifier l\'événement',
-    fld('Titre',inp('title',v.title,'text','required autofocus'))+
+  if(cp&&!cals.some(c=>c.id===v.calId)) v.calId=S.settings.targetCal;
+  openSheet(cp?'Copier l\'événement':isNew?'Nouvel événement':'Modifier l\'événement',
+    (cp?`<div class="small muted" style="margin-bottom:6px">Choisis la nouvelle date, change l'horaire si besoin, puis enregistre. L'original ne bouge pas.</div><div class="chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${[[1,'+1 jour'],[7,'+1 semaine'],[14,'+2 semaines']].map(([n,l])=>`<button type="button" class="chip" data-a="copyShift" data-id="${n}">${l}</button>`).join('')}<button type="button" class="chip" data-a="copyMultiOn">📅 Plusieurs dates</button></div><div id="cpCal"></div>`:'')+
+    fld('Titre',inp('title',v.title,'text',cp?'required':'required autofocus'))+
     `<div class="row2">${fld('Date',inp('date',v.date,'date','required'))}${fld('Fin (plusieurs jours)',inp('endDate',v.endDate||'','date'))}</div>`+
     `<div class="row2">${fld('Début',inp('start',v.start,'time'))}${fld('Fin',inp('end',v.end,'time'))}</div>`+
     fld('Lieu',inp('place',v.place,'text','id="placeIn" autocomplete="off" placeholder="'+(S.settings.mapsKey?'Tapez une adresse, un lieu…':'Adresse ou nom du lieu')+'"')+'<div id="placeSug" class="psug"></div>'+(S.settings.mapsKey?'':'<div class="small muted" style="margin-top:4px">Suggestions d\'adresses : ajoutez votre clé Maps dans Plus › Google.</div>'))+(v.place?`<a class="btn sm ghost" href="${mapsURL(v.place)}" target="_blank" rel="noopener" style="margin:-4px 0 6px">🗺️ Itinéraire dans Google Maps</a>`:'')+
     (cals.length?fld('Agenda Google',selF('calId',cals.map(c=>[c.id,c.name]),v.calId||S.settings.targetCal)):'')+
-    fld('Notes',`<textarea name="notes" style="min-height:60px">${esc(v.notes||'')}</textarea>`),
+    fld('Notes',`<textarea name="notes" style="min-height:60px">${esc(v.notes||'')}</textarea>`)+
+    (isNew?'':`<button type="button" class="btn ghost" data-a="copyEvent" data-id="${e.id}" style="width:100%;margin-top:4px">📄 Copier à une autre date</button>`),
     {onSave(fd){
       const title=fd.title.trim(); if(!title||!fd.date) return false;
+      if(cp&&copyMulti&&copyMulti.size){ // une copie par date cochée, avec la même durée (jours) que dans la fiche
+        const span=fd.endDate&&fd.endDate>fd.date?Math.round((parseD(fd.endDate)-parseD(fd.date))/864e5):0, L=[...copyMulti].sort();
+        const c=S.settings.calendars.find(c=>c.id===(fd.calId||S.settings.targetCal));
+        let end=fd.end; if(fd.start&&(!end||end<=fd.start)) end=fromMin(Math.min(toMin(fd.start)+60,1439));
+        L.forEach(d=>{const o={id:uid(),source:'local',created:Date.now(),title,date:d,endDate:span?addDays(d,span):null,start:fd.start,end:fd.start?end:'',place:fd.place.trim(),notes:fd.notes.trim(),calId:fd.calId||S.settings.targetCal,calName:c?c.name:''};S.events.push(o);markPending(o,'event')});
+        copyMulti=null; save(); render(); toast('📄 '+plural(L.length,'copie')+' ajoutée'+(L.length>1?'s':'')); return;
+      }
       const o=e||{id:uid(),source:'local',created:Date.now()};
       let end=fd.end; if(fd.start&&(!end||(end<=fd.start&&(!fd.endDate||fd.endDate===fd.date)))) end=fromMin(Math.min(toMin(fd.start)+60,1439));
       const newCal=fd.calId||o.calId||S.settings.targetCal;
@@ -1561,7 +1564,7 @@ function eventSheet(e,preset){
       const c=S.settings.calendars.find(c=>c.id===newCal);
       Object.assign(o,{title,date:fd.date,endDate:fd.endDate&&fd.endDate>fd.date?fd.endDate:null,start:fd.start,end:fd.start?end:'',place:fd.place.trim(),notes:fd.notes.trim(),calId:newCal,calName:c?c.name:''});
       if(isNew) S.events.push(o);
-      markPending(o,'event'); save(); render(); toast(isNew?'📅 Événement ajouté':'Événement modifié');
+      markPending(o,'event'); save(); render(); toast(cp?'📄 Copié au '+fmtDate(o.date):isNew?'📅 Événement ajouté':'Événement modifié');
     },onDelete:isNew?null:()=>{closeSheet();removeUndo('events',e,'Événement')}});
 }
 function reminderSheet(r){
@@ -2425,6 +2428,15 @@ function toast(msg,btn,fn){
 /* ================= Actions ================= */
 let imgTarget=null;
 let pendingPlan=[];
+let copyOrig=null, copyMulti=null, copyMonth=null; // copie d'événement : date de l'original, dates cochées (Set), mois affiché
+function renderCpCal(){ // mini-calendrier pour cocher plusieurs dates de copie
+  const box=$('#cpCal'); if(!box) return; if(!copyMulti){box.innerHTML='';return}
+  const [y,m]=copyMonth.split('-').map(Number), first=new Date(y,m-1,1), n=new Date(y,m,0).getDate(), off=(first.getDay()+6)%7;
+  let cells=''; for(let i=0;i<off;i++) cells+='<span></span>';
+  for(let d=1;d<=n;d++){const ds=iso(new Date(y,m-1,d));cells+=`<button type="button" class="cpd ${copyMulti.has(ds)?'on':''} ${ds===copyOrig?'orig':''} ${holidayOn(ds)?'hol':''}" data-a="cpToggle" data-id="${ds}" aria-pressed="${copyMulti.has(ds)}" aria-label="${fmtLong(ds)}">${d}</button>`}
+  box.innerHTML=`<div class="cpcal"><div class="cphead"><button type="button" class="icon-btn sm" data-a="cpMonth" data-id="-1" aria-label="Mois précédent">‹</button><b>${cap(MOIS_A[m-1])} ${y}</b><button type="button" class="icon-btn sm" data-a="cpMonth" data-id="1" aria-label="Mois suivant">›</button></div><div class="cpgrid">${'LMMJVSD'.split('').map(l=>`<small>${l}</small>`).join('')}${cells}</div><div class="small muted cpinfo">${copyMulti.size?`<b>${plural(copyMulti.size,'date cochée','dates cochées')}</b> · ${[...copyMulti].sort().map(dayShort).join(', ')}`:'Touche les jours où copier l\'événement (entouré : l\'original).'}</div></div>`;
+  const di=$('#shForm [name=date]'); if(di){const lab=di.closest('.fld');if(lab)lab.style.opacity=copyMulti.size?.45:1}
+}
 const A={
   jourDay(id){ goDay(+id); },
   tab(id){ if(id==='todo') todoFolder=null; if(id==='agenda'){ agMode='mois'; agDay=null; } if(id==='jour'&&view==='jour'&&!sub) jourOff=0; view=id; sub=null; render(); scrollTo(0,0); },
@@ -2474,7 +2486,7 @@ const A={
     moved.forEach(x=>{x.date=addDays(t,1);markPending(x,'task')}); save(); render();
     toast('↪️ '+plural(moved.length,'tâche reportée','tâches reportées')+' à demain','Annuler',()=>{moved.forEach(x=>{x.date=t;markPending(x,'task')});save();render()});
   },
-  pickDate(id){ const f=$('#shForm'); if(!f) return; const r=f.querySelector('[name=when][value=day]'); r.checked=true; thetaWhen(r.closest('div[onchange]')); f.querySelector('[name=date]').value=id; thetaProp(); },
+  clearDue(){ const r=$('#dueRow'); if(r) r.remove(); },
   toggleDay(id){ const[k,n]=id.split(':'), key=k==='class'?'classDays':'directionDays', v=+n, arr=[...(S.settings[key]||[])], i=arr.indexOf(v); if(i<0)arr.push(v); else arr.splice(i,1); S.settings[key]=arr.sort(); save(); render(); },
   plan(id,el){ const x=S.tasks.find(x=>x.id===id); if(!x) return; x.date=el.dataset.d||today(); x.time=el.dataset.v; markPending(x,'task'); save(); render(); toast('🗓️ Planifiée à '+x.time); },
   planAll(id,el){ const d=(el&&el.dataset.d)||today(), sg=suggest(d); pendingPlan=sg.filter(p=>!p.burst).map(p=>({task:p.task,date:d,start:p.start,end:p.end})); A.showPlan(d); },
@@ -2494,6 +2506,19 @@ const A={
   // Agenda
   newEvent(){ eventSheet(null); },
   editEvent(id){ const e=S.events.find(e=>e.id===id); if(e) eventSheet(e); },
+  copyEvent(id){ // copie : reprend ce qui est affiché dans la fiche (même modifié), date proposée = lendemain
+    const e=S.events.find(e=>e.id===id); if(!e) return;
+    const f=$('#shForm'), fd=f?Object.fromEntries(new FormData(f)):{}, src=Object.assign({},e,f?{title:fd.title,date:fd.date||e.date,endDate:fd.endDate||null,start:fd.start,end:fd.end,place:fd.place,notes:fd.notes,calId:fd.calId||e.calId}:{});
+    const span=src.endDate&&src.endDate>src.date?Math.round((parseD(src.endDate)-parseD(src.date))/864e5):0, d=addDays(src.date,1);
+    const copy={title:src.title||'',date:d,endDate:span?addDays(d,span):'',start:src.start||'',end:src.end||'',place:src.place||'',notes:src.notes||'',calId:src.calId};
+    copyOrig=src.date; copyMulti=null; eventSheet(null,{copy});
+    const di=$('#shForm [name=date]'), ei=$('#shForm [name=endDate]');
+    if(di&&ei&&span) di.addEventListener('change',()=>{if(di.value)ei.value=addDays(di.value,span)});
+  },
+  copyMultiOn(id,el){ if(copyMulti){copyMulti=null;el.classList.remove('on')}else{copyMulti=new Set();copyMonth=(copyOrig||today()).slice(0,7);el.classList.add('on');el.parentNode.querySelectorAll('[data-a=copyShift]').forEach(c=>c.classList.remove('on'))} renderCpCal(); },
+  cpToggle(d){ if(!copyMulti) return; copyMulti.has(d)?copyMulti.delete(d):copyMulti.add(d); if(navigator.vibrate)navigator.vibrate(8); renderCpCal(); },
+  cpMonth(n){ const [y,m]=copyMonth.split('-').map(Number), d=new Date(y,m-1+(+n),1); copyMonth=iso(d).slice(0,7); renderCpCal(); },
+  copyShift(n,el){ if(copyMulti){copyMulti=null;renderCpCal();const mb=el.parentNode.querySelector('[data-a=copyMultiOn]');if(mb)mb.classList.remove('on')} const di=$('#shForm [name=date]'); if(!di) return; di.value=addDays(copyOrig||di.value||today(),+n); di.dispatchEvent(new Event('change')); el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el)); }, // décalage compté depuis la date de l'original
   agendaPast(id){ agendaPast=id==='1'; render(); },
   agendaMode(id){ agMode=id; render(); },
   agSearchToggle(){ agSearchOn=!agSearchOn; if(!agSearchOn) agQuery=''; render(); },

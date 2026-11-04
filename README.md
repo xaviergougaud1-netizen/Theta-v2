@@ -3,6 +3,17 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.34
+- **Tâches : « 📅 Quel jour ? »** remplace la date limite, les propositions « Quand la faire ? » et l'échéance. Un seul jour où faire la tâche : Aujourd'hui, Demain, Mercredi, Dimanche (toujours le prochain, jamais le jour même), Jour choisi, Un mois ou Sans date. Les anciennes dates limites restent enregistrées et peuvent être retirées depuis la fiche.
+
+## Nouveautés v3.33
+- **Copier vers plusieurs dates** : dans « Copier l'événement », « 📅 Plusieurs dates » ouvre un mini-calendrier ; coche les jours (l'original est entouré), une copie est créée pour chacun.
+- **Réglage des suggestions 💡** : Réglages › Organisation de la journée › « 💡 Suggestions dans les créneaux libres » (écran Jour).
+
+## Nouveautés v3.32
+- **Copier un événement** : dans la fiche d'un événement, « 📄 Copier à une autre date » ouvre une copie (titre, horaire, lieu, notes, agenda) : choisis la date (raccourcis +1 jour, +1 semaine, +2 semaines), change l'horaire si besoin, enregistre. Marche aussi pour les événements en lecture seule.
+- **Agenda › Jour allégé** : plus de suggestions 💡 ni de « Rafale » dans les créneaux libres (elles restent sur l'écran Jour).
+
 ## Nouveautés v3.31
 - **Tâches datées depuis un lien** : `…/Theta-v2/?add=TEXTE&type=tache&date=demain` ouvre « Reçu de Claude » avec « ✅ Tâche » présélectionné et la date remplie (`demain`, `aujourdhui`, `apres-demain` ou `AAAA-MM-JJ`) ; une tâche par ligne. La date reste modifiable dans la fiche.
 
