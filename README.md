@@ -3,6 +3,15 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.35
+- **Micro dans la barre de navigation**, à gauche (« Dicter ») ; il dicte selon l'écran affiché. Plus de bouton ＋ flottant sur Jour, Tâches, Notes et Agenda (il reste dans Rappels, Habitudes et Bibliothèques, seul moyen d'y ajouter) ; ✏️ dans Notes pour écrire une note.
+- **Événement → tâche** : « ✅ Changer en tâche » dans la fiche (titre, date, heure, durée, lieu et notes repris ; Annuler possible).
+- **Masquer un événement** à la journée ou sur plusieurs jours : 👁 sur sa ligne ou « 🙈 Masquer » dans sa fiche, pour celui-ci ou tous ceux du même nom ; 👁 en haut de l'agenda pour les revoir (estompés) et les réafficher. Réglages `hidEv` et `hidTitles` ; les masqués comptent toujours pour le temps libre et la décharge.
+- **Listes repliables** (Jour : rappels, tâches, en retard, ce mois-ci, accompli ; Tâches : chaque groupe) : toucher le titre ; mémorisé (`fold`).
+- **Tâches compactes** (par défaut) et **taille du texte** (4 crans) dans Réglages › Apparence. Zoom CSS sur `#main` et `#sheet`, annulé sur les frises horaires pour garder le glissement juste.
+- **Agenda** : tirer la barre du bas d'un événement ou d'une tâche pour changer la durée ; en déplaçant, l'horaire s'affiche et s'aimante au quart d'heure.
+- Bilan de la semaine retiré.
+
 ## Nouveautés v3.34
 - **Tâches : « 📅 Quel jour ? »** remplace la date limite, les propositions « Quand la faire ? » et l'échéance. Un seul jour où faire la tâche : Aujourd'hui, Demain, Mercredi, Dimanche (toujours le prochain, jamais le jour même), Jour choisi, Un mois ou Sans date. Les anciennes dates limites restent enregistrées et peuvent être retirées depuis la fiche.
 
