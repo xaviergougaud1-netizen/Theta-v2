@@ -297,7 +297,11 @@ body.vjour #main{touch-action:pan-y}
 .gm-more{font-size:9px;opacity:.7;text-align:center}
 .hero{position:relative}
 .hero-sync{position:absolute;top:12px;right:12px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.22);color:#fff;font-size:18px;display:grid;place-items:center;cursor:pointer}
-.cyctags{display:flex;gap:4px;margin-top:3px}.cyc{font-size:11px;font-weight:750;padding:1px 8px;border-radius:8px;color:#fff;background:#6b7280}.cyc.c1{background:#e8912d}.cyc.c2{background:#3b82c4}.cyc.c3{background:#8b5cc9}
+.cyctags{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap}.cyc{font-size:11px;font-weight:750;padding:1px 8px;border-radius:8px;color:#fff;background:var(--bc,#6b7280)}
+.wdays.bdg span{text-transform:none;border:1.5px solid var(--bc,var(--line));background:transparent}.wdays.bdg input:checked+span{background:var(--bc,var(--a1));color:#fff}
+.bchip{border:1.5px solid var(--bc);color:var(--text);background:transparent;border-radius:999px;padding:4px 11px;font:inherit;font-size:12.5px;font-weight:700}.bchip.on{background:var(--bc);color:#fff}.bchip.inh{background:color-mix(in srgb,var(--bc) 30%,transparent)}
+.brow{display:flex;align-items:center;gap:8px;margin:6px 0}.brow input[type=text]{flex:1;min-width:0}.bdot{flex:none;width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:var(--bc);padding:0}
+.frow{padding:8px 0;border-top:1px solid var(--line)}.frow .fn{font-weight:650;margin-bottom:5px}.frow .bchips{display:flex;gap:6px;flex-wrap:wrap}
 .addrow{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;margin:6px 0 4px;border:1.5px dashed var(--line);border-radius:14px;background:transparent;color:var(--muted);font:inherit;font-weight:650}.addrow:active{background:var(--card)}
 #nav button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .hero-plus{right:58px;font-size:24px;line-height:1}
@@ -495,7 +499,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.39.1';
+const VERSION='3.40.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -609,6 +613,7 @@ function normalizeState(){
   for(const k in d) if(S[k]===undefined) S[k]=d[k];
   S.settings={...d.settings,...S.settings};
   if(!S.settings.cycV39){ const tr=(S.folders||[]).find(f=>!f.parentId&&String(f.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()==='travail'); if(tr&&tr.cycles===undefined) tr.cycles=true; S.settings.cycV39=1; }
+  if(!S.settings.cycV40){ S.settings.cycV40=1; if(!S.settings.badges) S.settings.badges=BADGE_DEFAULT(); (S.folders||[]).forEach(f=>{ if(f.cycles){ f.badges=['C1','C2','C3']; delete f.cycles; } }); }
   if(!S.settings.plusV37){ S.settings.plusMode='list'; S.settings.plusV37=1; }
   if(!S.settings._bdayFix){ (S.events||[]).forEach(e=>{ if(e.source!=='local'&&isBirthday(e)){ if(e.sync==='pending') e.sync='ok'; delete e.syncErr; e.gUpdated=null; } }); S.settings.lastFullSync=0; S.settings._bdayFix=true; S.settings._bdayFree=true; }
   if(!S.settings._bdayFree){ (S.events||[]).forEach(e=>{ if(e.gid&&!e.start&&!e.readonly&&(e.source==='local'||isBirthday(e))) e.sync='pending'; }); S.settings._bdayFree=true; }
@@ -1147,10 +1152,17 @@ function tile(f){
 }
 /* Dossiers projet : statut des idées (à faire / en cours ; « fait » = coché) */
 const ST_L={afaire:'À faire',encours:'En cours'};
-const CYC=['C1','C2','C3'];
+// Vignettes de notes : définitions dans S.settings.badges ({id,name,color}), attribuées aux dossiers par folder.badges (ids) ; une note les garde dans i.cyc (ids). Les sous-dossiers héritent de leurs parents.
+const BADGE_COLORS=['#e8912d','#3b82c4','#8b5cc9','#2fa37a','#d9534f','#d6a400','#e0629a','#6b7280'];
+const BADGE_DEFAULT=()=>['C1','C2','C3'].map((n,k)=>({id:n,name:n,color:BADGE_COLORS[k]}));
 let cycFilter='';
-const cyclesOn=id=>folderPath(id).some(f=>f.cycles);
-const cycTags=i=>i.cyc&&i.cyc.length&&cyclesOn(i.folderId)?`<div class="cyctags">${CYC.filter(c=>i.cyc.includes(c)).map(c=>`<span class="cyc ${c.toLowerCase()}">${c}</span>`).join('')}</div>`:'';
+function badgeAll(){ return (S.settings.badges&&S.settings.badges.length!==undefined)?S.settings.badges:BADGE_DEFAULT(); }
+function badgeOf(id){ return badgeAll().find(b=>b.id===id); }
+function badgesFor(fid){ const ids=new Set(); folderPath(fid).forEach(f=>(f.badges||[]).forEach(x=>ids.add(x))); return badgeAll().filter(b=>ids.has(b.id)); }
+const cyclesOn=id=>badgesFor(id).length>0;
+const badgeStyle=b=>`style="--bc:${esc(b.color||'#6b7280')}"`;
+const cycTags=i=>{ const L=(i.cyc||[]).map(badgeOf).filter(Boolean); return L.length&&cyclesOn(i.folderId)?`<div class="cyctags">${L.map(b=>`<span class="cyc" ${badgeStyle(b)}>${esc(b.name)}</span>`).join('')}</div>`:''; };
+const badgeChecks=(list,sel,box)=>`<div class="wdays bdg" id="${box}">${list.map(b=>`<label ${badgeStyle(b)}><input type="checkbox" data-b="${esc(b.id)}" ${sel.includes(b.id)?'checked':''}><span>${esc(b.name)}</span></label>`).join('')}</div>`;
 const isProj=id=>!!(id&&(S.folders.find(f=>f.id===id)||{}).project);
 const normName=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function itemRow(i){
@@ -1175,10 +1187,10 @@ VIEWS.todo=()=>{
   const subs=S.folders.filter(f=>(f.parentId||null)===cur);
   const items=S.items.filter(i=>(i.folderId||null)===cur), done=items.filter(i=>i.done), proj=isProj(cur);
   let open=items.filter(i=>!i.done);
-  const cycOn=cyclesOn(cur); if(cycOn&&cycFilter) open=open.filter(i=>(i.cyc||[]).includes(cycFilter));
+  const cycB=badgesFor(cur), cycOn=cycB.length>0; if(cycFilter&&!cycB.some(b=>b.id===cycFilter)) cycFilter=''; if(cycOn&&cycFilter) open=open.filter(i=>(i.cyc||[]).includes(cycFilter));
   if(proj){ const enc=open.filter(i=>i.status==='encours'); open=[...enc,...open.filter(i=>i.status!=='encours')];
     html+=`<div class="projbar"><span class="small"><b>🧩 Projet</b> · ${enc.length} en cours · ${open.length-enc.length} à faire · ${done.length} fait${done.length>1?'s':''}</span><button class="btn sm primary" data-a="sendClaude">🤖 Envoyer à Claude</button></div>`; }
-  if(cycOn) html+=chips([['','Tous'],...CYC.map(c=>[c,c])],cycFilter,'cycFilter',true);
+  if(cycOn) html+=chips([['','Tous'],...cycB.map(b=>[b.id,b.name])],cycFilter,'cycFilter',true);
   if(subs.length) html+=`<div class="tiles ${cur?'subfolder-tiles':''}" id="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${subs.map(tile).join('')}</div>`;
   if(!subs.length&&!items.length) html+=empty('📝','Rien ici pour l\'instant','Écrivez, dictez, prenez une photo ou créez un sous-dossier avec 📁+.');
   if(open.length) html+=`<div class="list" id="itemsList">${open.map(itemRow).join('')}</div>`;
@@ -1456,6 +1468,11 @@ SUBS.reglages=()=>{
   <div class="range"><span class="small">Luminosité</span><input type="range" min="40" max="140" step="5" value="${+s.bgBright||100}" data-r="bgBright" aria-label="Luminosité"><b>${+s.bgBright||100} %</b></div>
   <div class="small muted" style="margin-top:8px">Le voile atténue l'image pour garder les textes lisibles.</div></div>`;
   html+=sec('Bouton ＋ (ajouter)')+`<div class="card">${chips([['list','Sous les listes'],['top','En haut'],['fab','Flottant'],['off','Caché']],s.plusMode||'list','plusMode',true)}<div class="small muted" style="margin-top:8px">Sous les listes : ＋ en bas de chaque liste de Tâches et de Notes (petit ＋ en haut sur Jour et Agenda). En haut : petit ＋ à droite du titre, il ouvre le menu Ajouter (tâche, événement, rappel, note). Appui long sur 🎙️ ou sur un onglet : ajout rapide. Flottant : au-dessus du micro, comme avant. Caché : tu ajoutes avec le micro ou les boutons de l\'accueil.</div></div>`;
+  { const B=badgeAll(), walk=(pid,d)=>S.folders.filter(f=>(f.parentId||null)===pid).flatMap(f=>[[f,d],...walk(f.id,d+1)]);
+    const inhOf=f=>{const ids=new Set();folderPath(f.id).slice(0,-1).forEach(a=>(a.badges||[]).forEach(x=>ids.add(x)));return ids};
+    html+=sec('🏷️ Vignettes des notes',B.length)+`<div class="card"><div class="small muted">Crée tes vignettes (nom, couleur), puis choisis les dossiers où elles sont proposées. Les sous-dossiers héritent de leur dossier.</div>${B.map(b=>`<div class="brow" ${badgeStyle(b)}><button class="bdot" data-a="badgeColor" data-id="${esc(b.id)}" aria-label="Changer la couleur"></button><input type="text" class="input" value="${esc(b.name)}" data-c="badgeName" data-id="${esc(b.id)}" aria-label="Nom de la vignette"><button class="icon-btn sm" data-a="badgeDel" data-id="${esc(b.id)}" aria-label="Supprimer la vignette">✕</button></div>`).join('')}<button class="btn sm" data-a="badgeAdd" style="margin-top:6px">＋ Ajouter une vignette</button></div>`
+    +(B.length?`<div class="card"><div class="sub-h" style="margin-top:0">Dossiers concernés</div><div class="small muted" style="margin-bottom:4px">Touche une vignette pour l'attribuer au dossier. Une vignette pâle est héritée du dossier parent.</div>${walk(null,0).map(([f,d])=>{const inh=inhOf(f);return `<div class="frow" style="margin-left:${d*14}px"><div class="fn">${esc(f.icon||'📁')} ${esc(f.name)}</div><div class="bchips">${B.map(b=>{const on=(f.badges||[]).includes(b.id);return `<button class="bchip ${on?'on':inh.has(b.id)?'inh':''}" ${badgeStyle(b)} data-a="badgeFolder" data-id="${f.id}" data-v="${esc(b.id)}">${esc(b.name)}</button>`}).join('')}</div></div>`}).join('')||'<div class="small muted">Aucun dossier.</div>'}</div>`:'');
+  }
   html+=sec('Boutons de l\'accueil')+`<div class="card"><div class="small muted" style="margin-bottom:4px">À côté du micro, en bas à gauche de l'écran Jour :</div>
   <div class="srow"><span class="grow">＋ Événement et ＋ Tâche<div class="small muted">Au-dessus du micro</div></span><input type="checkbox" class="sw" data-c="setting" data-f="homeAdd" ${s.homeAdd?'checked':''}></div>
   <div class="srow"><span class="grow">📸 Prendre une photo</span><input type="checkbox" class="sw" data-c="setting" data-f="homePhoto" ${s.homePhoto?'checked':''}></div>
@@ -1717,9 +1734,9 @@ function folderSheet(f,parentId){
   openSheet(isNew?'Nouveau dossier':'Dossier « '+f.name+' »',
     fld('Nom',inp('name',v.name,'text','required autofocus'))+fld('Icône',`<button type="button" class="btn sm ghost" onclick="applySuggestedFolderIcon()">✨ Icône conseillée selon le nom</button><div class="swatches iconpick">${[...new Set([v.icon||'📁',...FOLDER_ICONS])].map(ic=>`<label title="${ic}"><input type="radio" name="icon" value="${esc(ic)}" ${ic===(v.icon||'📁')?'checked':''}><span>${ic}</span></label>`).join('')}</div>`)+
     fld('Couleurs principales',`<div class="swatches">${FOLDER_COLOR_FAMILIES.map((f,i)=>`<label title="${f.name}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE}" onchange="showFolderShades(${i})" ${f.main===gradOf(v.color)?'checked':''}><span style="background:${f.main}"></span></label>`).join('')}</div>`)+fld('Déclinaisons de la couleur choisie',`<div>${FOLDER_COLOR_FAMILIES.map((f,i)=>`<div class="swatches folder-shade-group" style="display:${i===folderFamilyIndex(v.color)?'flex':'none'}" data-family="${i}">${f.shades.map((g,j)=>`<label title="${f.name} — déclinaison ${j+1}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE+j+1}" ${g===gradOf(v.color)?'checked':''}><span style="background:${g}"></span></label>`).join('')}${i===folderFamilyIndex(v.color)&&ALL_GRADS.indexOf(gradOf(v.color))>=FOLDER_COLOR_FAMILIES.length*FOLDER_FAMILY_SIZE?`<label title="Ancienne couleur conservée"><input type="radio" name="color" value="${ALL_GRADS.indexOf(gradOf(v.color))}" checked><span style="background:${gradOf(v.color)}"></span></label>`:''}</div>`).join('')}</div>`)+fld('Dans le dossier',`<select name="parentId">${folderOptions(v.parentId,f?[f.id,...descendants(f.id)]:[])}</select>`)+
-    `<label class="srow"><span class="grow">🏖️ Tout décocher à la fin des vacances<div class="small muted">Le dernier jour des vacances scolaires, les notes cochées de ce dossier (et de ses sous-dossiers) redeviennent à faire.${S.settings.zone?'':' Choisis d\'abord ta zone de vacances dans Réglages.'}</div></span><input type="checkbox" class="sw" name="resetHol" ${v.resetHol?'checked':''}></label>`+`<label class="srow"><span class="grow">🏷️ Vignettes de cycle (C1, C2, C3)<div class="small muted">Chaque note de ce dossier (et de ses sous-dossiers) peut être marquée C1, C2, C3 ou tous, avec un filtre en haut de la liste.</div></span><input type="checkbox" class="sw" name="cycles" ${v.cycles?'checked':''}></label>`+`<label class="srow"><span class="grow">🧩 Dossier projet<div class="small muted">Chaque note a un statut (à faire, en cours) et le bouton « Envoyer à Claude » transmet la liste triée.</div></span><input type="checkbox" class="sw" name="project" ${v.project?'checked':''}></label>`+(isNew?'':`<button type="button" class="btn sm ghost" data-a="folderUncheck" data-id="${f.id}">↺ Tout décocher maintenant</button>`)+
+    `<label class="srow"><span class="grow">🏖️ Tout décocher à la fin des vacances<div class="small muted">Le dernier jour des vacances scolaires, les notes cochées de ce dossier (et de ses sous-dossiers) redeviennent à faire.${S.settings.zone?'':' Choisis d\'abord ta zone de vacances dans Réglages.'}</div></span><input type="checkbox" class="sw" name="resetHol" ${v.resetHol?'checked':''}></label>`+fld('🏷️ Vignettes de ce dossier',`${badgeAll().length?badgeChecks(badgeAll(),v.badges||[],'fbBox'):'<div class="small muted">Crée d\'abord des vignettes dans Réglages.</div>'}<div class="small muted">Les notes de ce dossier et de ses sous-dossiers pourront les porter. Gérer les vignettes : Réglages › Vignettes.</div>`)+`<label class="srow"><span class="grow">🧩 Dossier projet<div class="small muted">Chaque note a un statut (à faire, en cours) et le bouton « Envoyer à Claude » transmet la liste triée.</div></span><input type="checkbox" class="sw" name="project" ${v.project?'checked':''}></label>`+(isNew?'':`<button type="button" class="btn sm ghost" data-a="folderUncheck" data-id="${f.id}">↺ Tout décocher maintenant</button>`)+
     '',
-    {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null,resetHol:!!fd.resetHol,cycles:!!fd.cycles,project:!!fd.project});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
+    {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null,resetHol:!!fd.resetHol,project:!!fd.project});o.badges=[...$$('#fbBox input:checked')].map(x=>x.dataset.b);delete o.cycles;if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
      onDelete:isNew?null:()=>{
        const ids=[f.id,...descendants(f.id)], its=S.items.filter(i=>ids.includes(i.folderId));
        if(!confirm(`Supprimer « ${f.name} »${ids.length>1?', ses '+(ids.length-1)+' sous-dossier(s)':''} et ${plural(its.length,'élément')} ? Action définitive.`)) return;
@@ -1734,11 +1751,11 @@ function itemSheet(it,pre){
   openSheet(isNew?'Nouvelle note':'Note',
     fld('Texte',`<textarea name="text" ${isNew?'autofocus':''} placeholder="Votre note…">${esc(it.text)}</textarea>`)+
     fld('Importance',seg('lvl',[['tres','<span class="udot u-tres"></span>Très important'],['imp','<span class="udot u-urgent"></span>Important'],['','Normal']],it.lvl||''))+
-    (cyclesOn(it.folderId)?fld('Cycle(s) concerné(s)',`<div class="wdays" id="cycBox">${CYC.map(c=>`<label><input type="checkbox" name="cy_${c}" ${(it.cyc||[]).includes(c)?'checked':''}><span>${c}</span></label>`).join('')}<button type="button" class="btn sm ghost" data-a="cycAll" style="margin-left:4px">Tous</button></div>`):'')+
+    (cyclesOn(it.folderId)?fld('Vignettes',`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${badgeChecks(badgesFor(it.folderId),it.cyc||[],'cycBox').replace('class="wdays bdg"','class="wdays bdg" style="margin:0"')}<button type="button" class="btn sm ghost" data-a="cycAll">Toutes</button></div>`):'')+
     fld('Sous-éléments',stepsHTML())+
     fld('Photos',imgBoxHTML(isNew?'text':''))+
     fld('Dossier',`<select name="folderId">${folderOptions(it.folderId)}</select>`),
-    {onSave(fd){const text=fd.text.trim();if(!text&&!sheetImgs.length)return false;commitImgs(it);it.steps=readSteps();it.text=text||'Photo';it.folderId=fd.folderId||null;it.lvl=fd.lvl||'';if($('#cycBox'))it.cyc=CYC.filter(c=>fd['cy_'+c]);if(isNew)S.items.push(it);save();render();if(isNew)toast('📝 Note ajoutée')},
+    {onSave(fd){const text=fd.text.trim();if(!text&&!sheetImgs.length)return false;commitImgs(it);it.steps=readSteps();it.text=text||'Photo';it.folderId=fd.folderId||null;it.lvl=fd.lvl||'';if($('#cycBox'))it.cyc=[...$$('#cycBox input:checked')].map(x=>x.dataset.b);if(isNew)S.items.push(it);save();render();if(isNew)toast('📝 Note ajoutée')},
      headSave:true,onDelete:isNew?null:()=>{closeSheet();removeUndo('items',it,'Note')}});
   refreshImgBox();
 }
@@ -1763,7 +1780,7 @@ function searchRender(q){
   S.tasks.forEach(x=>{if(hit(x.title+' '+(x.notes||'')+' '+(x.steps||[]).map(s=>s.t).join(' ')))R.push(['task',x.id,x.done?'✔️':'✅',x.title,(x.date?fmtDate(x.date):'Sans date')+(x.done?' · faite':'')])});
   S.events.forEach(e=>{if(hit(e.title+' '+(e.place||'')+' '+(e.notes||'')))R.push(['event',e.id,'📅',e.title,fmtDate(e.date)+(e.start?' '+e.start:'')+(e.place?' · '+e.place:'')])});
   S.folders.forEach(f=>{if(hit(f.name))R.push(['folder',f.id,f.icon||'📁',f.name,'Dossier'])});
-  S.items.forEach(i=>{if(hit(i.text+' '+(i.steps||[]).map(s=>s.t).join(' ')+' '+(i.cyc||[]).join(' ')))R.push(['item',i.id,'📝',i.text,folderPath(i.folderId).map(f=>f.name).join(' › ')||'Notes'])});
+  S.items.forEach(i=>{if(hit(i.text+' '+(i.steps||[]).map(s=>s.t).join(' ')+' '+(i.cyc||[]).map(x=>(badgeOf(x)||{}).name||'').join(' ')))R.push(['item',i.id,'📝',i.text,folderPath(i.folderId).map(f=>f.name).join(' › ')||'Notes'])});
   S.reminders.forEach(r=>{if(hit(r.title))R.push(['rem',r.id,'🔔',r.title,r.recur!=='none'?'Récurrent':fmtDate(r.date)])});
   S.ideas.forEach(x=>{if(hit(x.title+' '+(x.note||'')))R.push(['idea',x.id,(LIBT[x.type]||['💡'])[0],x.title,'Idée'+(x.note?' · '+x.note:'')])});
   S.loans.forEach(l=>{if(hit(l.title+' '+l.person))R.push(['loan',l.id,'📚',l.title,'Prêté à '+l.person+(l.returned?' · rendu':'')])});
@@ -2210,7 +2227,7 @@ async function gfetch(url,opt={}){
 /* ---- Synchro des données entre appareils (fichier partagé sur Google Drive) ---- */
 const SYNC_NAME='Thêta - synchro.json';
 const SYNC_COLLS=['tasks','events','items','notes','reminders','habits','ideas','loans','folders'];
-const SYNC_PREFS=['classDays','classStart','classEnd','lunchFree','lunchStart','lunchEnd','directionDays','dechargeKw','zone','dayStart','dayEnd','defaultDuration'];
+const SYNC_PREFS=['classDays','classStart','classEnd','lunchFree','lunchStart','lunchEnd','directionDays','dechargeKw','zone','dayStart','dayEnd','defaultDuration','badges'];
 const SKIP_KEYS=new Set(['updatedAt','sync','syncErr','gUpdated']);
 const recKey=r=>JSON.stringify(r,(k,v)=>SKIP_KEYS.has(k)?undefined:v);
 const prefPick=()=>{const o={};SYNC_PREFS.forEach(k=>o[k]=S.settings[k]);o.loanPlaces=S.loanPlaces;return o};
@@ -2620,6 +2637,12 @@ const A={
     if(sheetOpen) closeSheet(); save(); render(); toast('👁 Réaffiché'); },
   agShowHid(){ agShowHid=!agShowHid; render(); toast(agShowHid?'Événements masqués affichés (estompés)':'Événements masqués cachés'); },
   fold(k){ const s=S.settings; s.fold=s.fold||{}; s.fold[k]=!s.fold[k]; save(); render(); },
+  badgeAdd(){ const B=(S.settings.badges=S.settings.badges||[]); B.push({id:uid(),name:'Vignette '+(B.length+1),color:BADGE_COLORS[B.length%BADGE_COLORS.length]}); save(); render(); },
+  badgeColor(id){ const b=badgeOf(id); if(!b) return; const k=BADGE_COLORS.indexOf(b.color); b.color=BADGE_COLORS[(k+1)%BADGE_COLORS.length]; save(); render(); },
+  badgeDel(id){ const b=badgeOf(id); if(!b) return; const n=S.items.filter(i=>(i.cyc||[]).includes(id)).length;
+    if(!confirm(`Supprimer la vignette « ${b.name} » ?`+(n?`\nElle sera retirée de ${plural(n,'note')}.`:''))) return;
+    S.settings.badges=badgeAll().filter(x=>x.id!==id); S.items.forEach(i=>{ if(i.cyc) i.cyc=i.cyc.filter(x=>x!==id); }); S.folders.forEach(f=>{ if(f.badges) f.badges=f.badges.filter(x=>x!==id); }); save(); render(); },
+  badgeFolder(id,el){ const f=S.folders.find(x=>x.id===id); if(!f) return; const b=el.dataset.v; f.badges=f.badges||[]; const k=f.badges.indexOf(b); if(k>=0) f.badges.splice(k,1); else f.badges.push(b); save(); render(); },
   cycFilter(v){ cycFilter=v; render(); },
   cycAll(){ const b=$$('#cycBox input'); const all=b.every(x=>x.checked); b.forEach(x=>x.checked=!all); },
   plusMode(v){ S.settings.plusMode=v; save(); render(); },
@@ -2809,6 +2832,7 @@ const A={
 };
 const C={
   prop(el){ const[n,p]=findProp(el.dataset.id); if(!p) return; p[el.dataset.f]=el.value; save(); },
+  badgeName(el){ const b=badgeOf(el.dataset.id); if(b&&el.value.trim()){ b.name=el.value.trim(); save(); render(); } },
   setting(el){ const f=el.dataset.f; S.settings[f]=el.type==='checkbox'?el.checked:(f==='defaultDuration'?+el.value:el.value.trim()); save();
     if(f==='zone'){ S.holidays=null; save(); if(S.settings.zone) loadHolidays(true); else render(); }
     if(f==='mapsKey'){ mapsP=null; }

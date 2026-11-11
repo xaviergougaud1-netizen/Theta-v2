@@ -3,6 +3,9 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.40
+- **Vignettes personnalisables** : Réglages › « 🏷️ Vignettes des notes ». Crée, renomme, recolore (toucher la pastille) ou supprime tes vignettes (C1, C2, C3 au départ), puis attribue-les aux dossiers et sous-dossiers de ton choix (les sous-dossiers héritent du parent). Même choix dans la fiche d'un dossier. Réglage `badges` (synchronisé avec Drive), `badges` sur le dossier, `cyc` (ids) sur la note. Remplace l'interrupteur « Vignettes de cycle » de la v3.39 (le dossier Travail garde C1, C2, C3).
+
 ## Nouveautés v3.39.1
 - Notes : le bouton « Déplacer » 📁↗ est aligné en haut avec le ＋, même quand la note a des sous-éléments ou des photos.
 
