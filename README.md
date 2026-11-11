@@ -3,6 +3,9 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.39.1
+- Notes : le bouton « Déplacer » 📁↗ est aligné en haut avec le ＋, même quand la note a des sous-éléments ou des photos.
+
 ## Nouveautés v3.39
 - **Vignettes de cycle sur les notes** : ⋯ du dossier › « 🏷️ Vignettes de cycle (C1, C2, C3) » (activé d'office pour le dossier Travail, sous-dossiers compris). Dans la fiche d'une note, « Cycle(s) concerné(s) » : C1, C2, C3, ou « Tous ». Les vignettes s'affichent sous la note ; filtre Tous / C1 / C2 / C3 en haut de la liste ; la recherche trouve « C2 ». Champ `cyc` sur la note, `cycles` sur le dossier.
 

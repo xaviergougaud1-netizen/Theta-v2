@@ -369,7 +369,7 @@ body.navtop .micdock{bottom:calc(24px + env(safe-area-inset-bottom))}
 body.navtop .livebox{bottom:calc(96px + env(safe-area-inset-bottom))}
 .livebox .live{font-style:italic;max-height:30vh;overflow:auto;white-space:pre-wrap;margin:6px 0;font-size:15px}
 .livebox small{color:var(--muted);font-size:12px}
-.item.top{align-items:flex-start}.item.top .chk{margin-top:1px}.item.top .handle{padding-top:2px}
+.todo-item>.icon-btn.sm{align-self:flex-start}.todo-item>.subadd{margin-top:2px}.item.top{align-items:flex-start}.item.top .chk{margin-top:1px}.item.top .handle{padding-top:2px}
 .bgt.match{border-color:color-mix(in srgb,var(--a1) 60%,transparent)}
 .bgt.match::before{content:"Assorti";position:absolute;top:6px;left:6px;font-size:10px;font-weight:800;background:#fff;color:#1a1a1a;border-radius:6px;padding:1px 6px;z-index:1}
 .navmic .ic{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff}#nav button.navmic{color:var(--text)}
@@ -467,6 +467,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
   .item{gap:10px;padding:13px 12px}
   .chk{width:28px;height:28px;flex-shrink:0}
   .icon-btn,.icon-btn.sm{width:44px;height:44px}
+  .todo-item>.subadd{margin-top:7px}
   .btn{min-height:42px}
   input,select,textarea{font-size:16px}
   .sec{margin-top:20px}
@@ -494,7 +495,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.39.0';
+const VERSION='3.39.1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
