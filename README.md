@@ -3,6 +3,14 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.37
+- **＋ sous chaque liste** (Tâches : sous chaque groupe, Notes : sous la liste du dossier) : réglage « Sous les listes », activé par défaut. Sous « Aujourd'hui » et « Demain », la tâche reçoit déjà la date. Sur Jour et Agenda, le ＋ reste en haut. Réglages › Bouton ＋ : Sous les listes, En haut, Flottant, Caché (`plusMode`).
+- **Appui long** sur 🎙️ ou sur Jour : menu Ajouter ; sur Tâches, Notes, Agenda : nouvelle tâche, note ou événement.
+- **Raccourcis de l'icône de l'appli** (appui long sur l'icône) : Nouvelle tâche, Nouvelle note, Nouvel événement, Aujourd'hui (`?new=tache|note|evenement`). Android les met à jour seul sous un jour environ.
+
+## Nouveautés v3.36
+- **Bouton ＋ réglable** : Réglages › Bouton ＋ (ajouter) — Caché, En haut (petit ＋ à droite du titre, par défaut) ou Flottant (au-dessus du micro). Il ouvre le menu Ajouter : tâche, événement, rappel, note. Réglage `plusMode`, propre à chaque appareil.
+
 ## Nouveautés v3.35
 - **Micro dans la barre de navigation**, à gauche (« Dicter ») ; il dicte selon l'écran affiché. Plus de bouton ＋ flottant sur Jour, Tâches, Notes et Agenda (il reste dans Rappels, Habitudes et Bibliothèques, seul moyen d'y ajouter) ; ✏️ dans Notes pour écrire une note.
 - **Événement → tâche** : « ✅ Changer en tâche » dans la fiche (titre, date, heure, durée, lieu et notes repris ; Annuler possible).

@@ -31,28 +31,42 @@
   ],
   "shortcuts": [
     {
+      "name": "Nouvelle tâche",
+      "short_name": "Tâche",
+      "url": "./?new=tache",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Nouvelle note",
+      "short_name": "Note",
+      "url": "./?new=note",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Nouvel événement",
+      "short_name": "Événement",
+      "url": "./?new=evenement",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
       "name": "Aujourd'hui",
+      "short_name": "Jour",
       "url": "./?tab=jour",
-      "icons": [
-        {
-          "src": "icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Tâches",
-      "url": "./?tab=taches",
-      "icons": [
-        {
-          "src": "icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Agenda",
-      "url": "./?tab=agenda",
       "icons": [
         {
           "src": "icon-192.png",
