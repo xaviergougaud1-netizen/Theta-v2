@@ -3,6 +3,9 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.38
+- **Événements informatifs** : dans la fiche d'un événement avec heure (y compris ceux des agendas en lecture seule), « ℹ️ Informatif » pour celui-ci ou pour tous ceux du même nom. Il reste affiché (bordure en pointillés) mais ne bloque plus le créneau : tâches et 💡 suggestions peuvent y passer. Les événements créés dans Thêta sont envoyés à Google Agenda comme « Disponible ». « 🕐 Bloque le créneau » annule. Réglages `infEv` et `infTitles`, propres à chaque appareil.
+
 ## Nouveautés v3.37
 - **＋ sous chaque liste** (Tâches : sous chaque groupe, Notes : sous la liste du dossier) : réglage « Sous les listes », activé par défaut. Sous « Aujourd'hui » et « Demain », la tâche reçoit déjà la date. Sur Jour et Agenda, le ＋ reste en haut. Réglages › Bouton ＋ : Sous les listes, En haut, Flottant, Caché (`plusMode`).
 - **Appui long** sur 🎙️ ou sur Jour : menu Ajouter ; sur Tâches, Notes, Agenda : nouvelle tâche, note ou événement.

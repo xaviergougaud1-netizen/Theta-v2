@@ -374,7 +374,7 @@ body.navtop .livebox{bottom:calc(96px + env(safe-area-inset-bottom))}
 .navmic .ic{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff}#nav button.navmic{color:var(--text)}
 #nav button.navmic.rec .ic{background:linear-gradient(135deg,#ff5d6c,#c2185b);animation:pulse 1.2s infinite}#nav button.navmic:disabled{opacity:.4}
 .evacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.evacts .btn{flex:1 1 auto}
-.evhide{flex:none;border:0;background:none;font-size:18px;padding:4px 2px;opacity:.6;color:inherit}.item.evhid{opacity:.5}
+.evhide{flex:none;border:0;background:none;font-size:18px;padding:4px 2px;opacity:.6;color:inherit}.item.evhid{opacity:.5}.item.evinf{border-style:dashed;opacity:.85}.tl-ev.evinf,.wk-ev.evinf{border:1.5px dashed rgba(255,255,255,.85);opacity:.78}
 .sec.secfold{border:0;background:none;padding:0;width:calc(100% - 8px);font-family:inherit;cursor:pointer;text-align:left}.fcar{margin-left:auto;transition:transform .2s;font-size:12px}.secfold.shut .fcar{transform:rotate(-90deg)}
 body.compact .item.task{padding:6px 10px;gap:8px;border-radius:12px}body.compact .item.task .chk{width:22px;height:22px;border-radius:7px}
 body.compact .item.task .meta{margin-top:1px;font-size:11.5px;gap:4px}body.compact .tcat,body.compact .tdur,body.compact .turg{display:none}
@@ -493,7 +493,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.37.0';
+const VERSION='3.38.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -786,6 +786,10 @@ var agShowHid=false; // var : lisible même si un rendu a lieu avant cette ligne
 function evKey(e){return e.gid?'g:'+e.gid:e.id}
 function evIsHidden(e){const s=S.settings;return !!((s.hidEv&&s.hidEv.includes(evKey(e)))||(s.hidTitles&&s.hidTitles.length&&s.hidTitles.includes(norm(e.title||''))))}
 function evHideable(e){return !e.start||!!(e.endDate&&e.endDate>e.date)}
+// Événements informatifs : réglages infEv (clés) et infTitles (tous ceux du même nom) ; ils restent affichés mais ne bloquent pas le créneau (« Disponible » dans Google Agenda)
+function evIsInfo(e){const s=S.settings;return !!(e&&e.start&&((s.infEv&&s.infEv.includes(evKey(e)))||(s.infTitles&&s.infTitles.length&&s.infTitles.includes(norm(e.title||'')))))}
+function evInfoBtn(e){return e.start?(evIsInfo(e)?`<button type="button" class="btn ghost" data-a="infoOff" data-id="${e.id}">🕐 Bloque le créneau</button>`:`<button type="button" class="btn ghost" data-a="infoEv" data-id="${e.id}">ℹ️ Informatif</button>`):''}
+function infoResync(){ S.events.forEach(e=>{ if(e.gid&&e.start&&!e.readonly&&e.source==='local'){ const now=evIsInfo(e); if(!!e._inf!==now){ e._inf=now; markPending(e,'event'); } } }); queueSync&&queueSync(); }
 function hidCount(){const s=S.settings;return (s.hidEv||[]).length+(s.hidTitles||[]).length}
 function evHideBtn(e){return evIsHidden(e)?`<button type="button" class="btn ghost" data-a="unhideEv" data-id="${e.id}">👁 Réafficher</button>`:`<button type="button" class="btn ghost" data-a="hideEv" data-id="${e.id}">🙈 Masquer</button>`}
 const BYDAY=['SU','MO','TU','WE','TH','FR','SA'];
@@ -902,7 +906,7 @@ function nextRecur(d,r){
 function freeSlots(d,start,endD){
   const st=S.settings; endD=endD??toMin(st.dayEnd||'20:00');
   if(start==null){start=toMin(st.dayStart||'08:00'); if(d===today()){const n=new Date();start=Math.max(start,Math.ceil((n.getHours()*60+n.getMinutes())/15)*15)}}
-  const busy=[...eventsAll(d).filter(e=>e.start&&e.date===d).map(e=>[toMin(e.start),e.end&&e.end>e.start?toMin(e.end):toMin(e.start)+60]),
+  const busy=[...eventsAll(d).filter(e=>e.start&&e.date===d&&!evIsInfo(e)).map(e=>[toMin(e.start),e.end&&e.end>e.start?toMin(e.end):toMin(e.start)+60]),
     ...S.tasks.filter(x=>x.date===d&&x.time&&!x.done).map(x=>[toMin(x.time),toMin(x.time)+(+x.duration||30)]),
     ...classB(d,'c').map(b=>[b.s,b.e])].sort((a,b)=>a[0]-b[0]);
   const free=[]; let cur=start;
@@ -999,7 +1003,7 @@ function eventRow(e,day){
   const multi=e.endDate&&e.endDate!==e.date;
   const tm=e.start&&(!multi||e.date===day)?`${e.start}<small>${e.end||''}</small>`:'<small>Journée</small>';
   const hid=evIsHidden(e), eye=evHideable(e)?`<button type="button" class="evhide" data-a="${hid?'unhideEv':'hideEv'}" data-id="${e.id}" aria-label="${hid?'Réafficher':'Masquer'}">${hid?'🙈':'👁'}</button>`:'';
-  return `<div class="item ${hid?'evhid':''}" data-a="editEvent" data-id="${e.id}"><div class="evtime">${tm}</div><span class="evbar" style="background:${esc(color)}"></span><div class="grow oneline"><div class="ttl">${esc(evTitle(e))}</div><div class="meta">${e.place?`<a class="tag maplink" href="${mapsURL(e.place)}" target="_blank" rel="noopener">📍 ${esc(e.place)}</a>`:''}${e.readonly?'<span class="tag">🔒</span>':''}${syncTag(e)}</div></div>${eye}</div>`;
+  return `<div class="item ${hid?'evhid':''} ${evIsInfo(e)?'evinf':''}" data-a="editEvent" data-id="${e.id}"><div class="evtime">${tm}</div><span class="evbar" style="background:${esc(color)}"></span><div class="grow oneline"><div class="ttl">${esc(evTitle(e))}</div><div class="meta">${e.place?`<a class="tag maplink" href="${mapsURL(e.place)}" target="_blank" rel="noopener">📍 ${esc(e.place)}</a>`:''}${e.readonly?'<span class="tag">🔒</span>':''}${syncTag(e)}</div></div>${eye}</div>`;
 }
 // Répétition en version courte pour les capsules
 function recurShort(r){
@@ -1052,7 +1056,7 @@ function dayTimeline(t,isToday,sug){
     const PP=PALETTES[S.settings.palette], pc=PP?palPairs(PP)[B.indexOf(b)%palPairs(PP).length]:null;
     const c=b.k==='ev'?((S.settings.calendars.find(c=>c.id===b.o.calId)||{}).color||b.o.color||(pc?`linear-gradient(135deg,${pc[0]},${pc[1]})`:'')):'';
     const hh=Math.max(20,(b.e-b.s)*PX-2), one=hh<34;
-    h+=`<div class="tl-ev ${b.k} ${one?'one':''}" data-drag="${b.k==='ev'?'ev':'task'}" data-mode="t" data-d="${t}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='ev'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${y(b.s)}px;height:${hh}px;left:calc(44px + (100% - 48px)*${b.col}/${b.n});width:calc((100% - 48px)/${b.n} - 3px);${b.n>2?'padding:2px 4px;font-size:10.5px;':''}${c?`background:${esc(c)};`:''}"><b>${b.k==='task'?urgDot(b.o):''}${esc(b.k==='task'?b.o.title:evTitle(b.o))}</b><small>${fromMin(b.s)}–${fromMin(Math.min(b.e,1439))}${b.k==='ev'&&b.o.place?' · 📍 '+esc(b.o.place):''}</small>${hh>=22&&!b.o.readonly?'<i class="rsz" data-rsz aria-hidden="true"></i>':''}</div>`;
+    h+=`<div class="tl-ev ${b.k} ${one?'one':''} ${b.k==='ev'&&evIsInfo(b.o)?'evinf':''}" data-drag="${b.k==='ev'?'ev':'task'}" data-mode="t" data-d="${t}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='ev'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${y(b.s)}px;height:${hh}px;left:calc(44px + (100% - 48px)*${b.col}/${b.n});width:calc((100% - 48px)/${b.n} - 3px);${b.n>2?'padding:2px 4px;font-size:10.5px;':''}${c?`background:${esc(c)};`:''}"><b>${b.k==='task'?urgDot(b.o):''}${esc(b.k==='task'?b.o.title:evTitle(b.o))}</b><small>${fromMin(b.s)}–${fromMin(Math.min(b.e,1439))}${b.k==='ev'&&b.o.place?' · 📍 '+esc(b.o.place):''}</small>${hh>=22&&!b.o.readonly?'<i class="rsz" data-rsz aria-hidden="true"></i>':''}</div>`;
   }
   if(isToday&&nowM>=H0&&nowM<=H1) h+=`<div class="tl-now" style="top:${y(nowM)}px"></div>`;
   return (allDay.length?`<div class="list ${holidayOn(t)?'hol':''}" style="margin-bottom:10px">${allDay.map(e=>eventRow(e,t)).join('')}</div>`:'')+`<div class="tl ${holidayOn(t)?'hol':''}" style="height:${(H1-H0)*PX+6}px">${h}</div>`;
@@ -1229,7 +1233,7 @@ function agendaWeekView(){
     const finish=()=>{const n=Math.max(1,...cluster.map(b=>b.col+1));cluster.forEach(b=>b.n=n);cluster=[];colsEnd.length=0};
     B.forEach(b=>{if(cluster.length&&b.s>=clEnd)finish();let c=colsEnd.findIndex(e=>e<=b.s);if(c<0){c=colsEnd.length;colsEnd.push(b.e)}else colsEnd[c]=b.e;b.col=c;cluster.push(b);clEnd=Math.max(clEnd,b.e)});
     if(cluster.length) finish();
-    const blocks=B.map(b=>b.k==='c'?`<div class="wk-ev cls" style="top:${(b.s-H0)*PX}px;height:${(b.e-b.s)*PX-2}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px)"><b>🏫</b><small>Classe</small></div>`:`<div class="wk-ev ${b.k==='t'?'task':''}" data-drag="${b.k==='t'?'task':'ev'}" data-mode="t" data-d="${d}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='e'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${(b.s-H0)*PX}px;height:${Math.max(10,(b.e-b.s)*PX-2)}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px);${b.c?'background:'+esc(b.c):''}"><b>${b.k==='t'?urgDot(b.o):''}${esc(b.k==='t'?b.o.title:evTitle(b.o))}</b><small>${fromMin(b.s)}</small>${(b.e-b.s)*PX>=24&&!b.o.readonly?'<i class="rsz" data-rsz aria-hidden="true"></i>':''}</div>`).join('');
+    const blocks=B.map(b=>b.k==='c'?`<div class="wk-ev cls" style="top:${(b.s-H0)*PX}px;height:${(b.e-b.s)*PX-2}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px)"><b>🏫</b><small>Classe</small></div>`:`<div class="wk-ev ${b.k==='t'?'task':''} ${b.k==='e'&&evIsInfo(b.o)?'evinf':''}" data-drag="${b.k==='t'?'task':'ev'}" data-mode="t" data-d="${d}" data-s="${b.s}" data-dur="${b.e-b.s}" data-ppm="${PX}" data-a="${b.k==='e'?'editEvent':'editTask'}" data-id="${b.o.id}" style="top:${(b.s-H0)*PX}px;height:${Math.max(10,(b.e-b.s)*PX-2)}px;left:calc(${b.col*100/b.n}% + 1px);width:calc(${100/b.n}% - 2px);${b.c?'background:'+esc(b.c):''}"><b>${b.k==='t'?urgDot(b.o):''}${esc(b.k==='t'?b.o.title:evTitle(b.o))}</b><small>${fromMin(b.s)}</small>${(b.e-b.s)*PX>=24&&!b.o.readonly?'<i class="rsz" data-rsz aria-hidden="true"></i>':''}</div>`).join('');
     body+=`<div class="wk-col ${holidayOn(d)?'hol':''}" data-tdrop="${d}" data-a="wkSlot" data-d="${d}" data-h0="${H0}" data-ppm="${PX}" style="height:${H}px">${hrs.map(m=>`<i class="wk-hr" style="top:${(m-H0)*PX}px"></i>`).join('')}${blocks}</div>`;
   });
   const groups=days.map(d=>{const L=agTasksOn(d);return L.length?agDayLabel(fmtLong(d),L.length)+`<div class="list">${L.map(taskRowLite).join('')}</div>`:''}).join('');
@@ -1553,7 +1557,7 @@ function taskSheet(x,preset){
 function eventSheet(e,preset){
   const isNew=!e;
   if(e&&e.readonly){
-    openSheet(e.title,`<div class="card" style="box-shadow:none"><div class="srow">📅 ${fmtLong(e.date)}${e.endDate&&e.endDate!==e.date?' → '+fmtLong(e.endDate):''}</div>${e.start?`<div class="srow">🕐 ${e.start} – ${e.end||''}</div>`:''}${e.place?`<a class="srow maplink" href="${mapsURL(e.place)}" target="_blank" rel="noopener">📍 ${esc(e.place)} · ouvrir dans Maps</a>`:''}${e.notes?`<div class="srow small">${linkify(esc(e.notes))}</div>`:''}<div class="srow small muted">🔒 Agenda « ${esc(e.calName||'')} » en lecture seule</div></div><div class="evacts"><button type="button" class="btn ghost" data-a="copyEvent" data-id="${e.id}">📄 Copier à une autre date</button>${evHideable(e)?evHideBtn(e):''}</div>`);
+    openSheet(e.title,`<div class="card" style="box-shadow:none"><div class="srow">📅 ${fmtLong(e.date)}${e.endDate&&e.endDate!==e.date?' → '+fmtLong(e.endDate):''}</div>${e.start?`<div class="srow">🕐 ${e.start} – ${e.end||''}</div>`:''}${e.place?`<a class="srow maplink" href="${mapsURL(e.place)}" target="_blank" rel="noopener">📍 ${esc(e.place)} · ouvrir dans Maps</a>`:''}${e.notes?`<div class="srow small">${linkify(esc(e.notes))}</div>`:''}<div class="srow small muted">🔒 Agenda « ${esc(e.calName||'')} » en lecture seule</div></div><div class="evacts"><button type="button" class="btn ghost" data-a="copyEvent" data-id="${e.id}">📄 Copier à une autre date</button>${evInfoBtn(e)}${evHideable(e)?evHideBtn(e):''}</div>`);
     return;
   }
   const pd=preset&&typeof preset==='object'?preset:{date:preset};
@@ -1569,7 +1573,7 @@ function eventSheet(e,preset){
     fld('Lieu',inp('place',v.place,'text','id="placeIn" autocomplete="off" placeholder="'+(S.settings.mapsKey?'Tapez une adresse, un lieu…':'Adresse ou nom du lieu')+'"')+'<div id="placeSug" class="psug"></div>'+(S.settings.mapsKey?'':'<div class="small muted" style="margin-top:4px">Suggestions d\'adresses : ajoutez votre clé Maps dans Plus › Google.</div>'))+(v.place?`<a class="btn sm ghost" href="${mapsURL(v.place)}" target="_blank" rel="noopener" style="margin:-4px 0 6px">🗺️ Itinéraire dans Google Maps</a>`:'')+
     (cals.length?fld('Agenda Google',selF('calId',cals.map(c=>[c.id,c.name]),v.calId||S.settings.targetCal)):'')+
     fld('Notes',`<textarea name="notes" style="min-height:60px">${esc(v.notes||'')}</textarea>`)+
-    (isNew?'':`<div class="evacts"><button type="button" class="btn ghost" data-a="copyEvent" data-id="${e.id}">📄 Copier à une autre date</button><button type="button" class="btn ghost" data-a="evToTask" data-id="${e.id}">✅ Changer en tâche</button>${evHideable(e)?evHideBtn(e):''}</div>`),
+    (isNew?'':`<div class="evacts"><button type="button" class="btn ghost" data-a="copyEvent" data-id="${e.id}">📄 Copier à une autre date</button><button type="button" class="btn ghost" data-a="evToTask" data-id="${e.id}">✅ Changer en tâche</button>${evInfoBtn(e)}${evHideable(e)?evHideBtn(e):''}</div>`),
     {onSave(fd){
       const title=fd.title.trim(); if(!title||!fd.date) return false;
       if(cp&&copyMulti&&copyMulti.size){ // une copie par date cochée, avec la même durée (jours) que dans la fiche
@@ -2039,7 +2043,7 @@ const validHM=t=>/^\d{2}:\d{2}$/.test(t||'')&&toMin(t)<1440;
 const validD=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'');
 function gEventBody(e){
   const b={summary:e.title,location:e.place||'',description:e.notes||''};
-  if(e.start){const et=e.end&&(e.end>e.start||(e.endDate&&e.endDate>e.date))?e.end:fromMin(Math.min(toMin(e.start)+60,1439));b.start=gTime(e.date,e.start);b.end=gTime(e.endDate||e.date,et)}
+  if(e.start){const et=e.end&&(e.end>e.start||(e.endDate&&e.endDate>e.date))?e.end:fromMin(Math.min(toMin(e.start)+60,1439));b.start=gTime(e.date,e.start);b.end=gTime(e.endDate||e.date,et);b.transparency=evIsInfo(e)?'transparent':'opaque'}
   else{b.start={date:e.date};b.end={date:addDays(e.endDate||e.date,1)};if(!e.gid||e.source==='local')b.transparency='transparent'}
   return b;
 }
@@ -2586,6 +2590,15 @@ const A={
       queueSync(); save(); render();
     });
   },
+  infoEv(id){ const e=S.events.find(x=>x.id===id); if(!e) return;
+    openSheet('Informatif : « '+(e.title||'')+' »',`<p class="small muted">Il reste affiché, mais le créneau compte comme libre (tâches, 💡 suggestions) et il est marqué « Disponible » dans Google Agenda.</p><div class="evacts"><button type="button" class="btn primary" data-a="infoDo" data-id="one" data-v="${e.id}">ℹ️ Seulement celui-ci</button><button type="button" class="btn" data-a="infoDo" data-id="all" data-v="${e.id}">ℹ️ Tous les « ${esc(e.title||'')} »</button></div>`); },
+  infoDo(mode,el){ const e=S.events.find(x=>x.id===el.dataset.v); if(!e) return; const s=S.settings;
+    const arr=mode==='all'?(s.infTitles=s.infTitles||[]):(s.infEv=s.infEv||[]), k=mode==='all'?norm(e.title||''):evKey(e);
+    if(!arr.includes(k)) arr.push(k); infoResync(); closeSheet(); save(); render();
+    toast('ℹ️ Informatif : le créneau reste libre','Annuler',()=>{const j=arr.indexOf(k);if(j>=0)arr.splice(j,1);infoResync();save();render()}); },
+  infoOff(id){ const e=S.events.find(x=>x.id===id); if(!e) return; const s=S.settings, k=evKey(e), t=norm(e.title||'');
+    s.infEv=(s.infEv||[]).filter(x=>x!==k); s.infTitles=(s.infTitles||[]).filter(x=>x!==t); infoResync();
+    if(sheetOpen) closeSheet(); save(); render(); toast('🕐 Le créneau est de nouveau bloqué'); },
   hideEv(id){ const e=S.events.find(x=>x.id===id); if(!e) return;
     openSheet('Masquer « '+(e.title||'')+' »',`<p class="small muted">Il reste enregistré (et dans Google Agenda). Pour le revoir : 👁 en haut de l'agenda.</p><div class="evacts"><button type="button" class="btn primary" data-a="hideDo" data-id="one" data-v="${e.id}">🙈 Seulement celui-ci</button><button type="button" class="btn" data-a="hideDo" data-id="all" data-v="${e.id}">🙈 Tous les « ${esc(e.title||'')} »</button></div>`); },
   hideDo(mode,el){ const e=S.events.find(x=>x.id===el.dataset.v); if(!e) return; const s=S.settings;
