@@ -297,6 +297,7 @@ body.vjour #main{touch-action:pan-y}
 .gm-more{font-size:9px;opacity:.7;text-align:center}
 .hero{position:relative}
 .hero-sync{position:absolute;top:12px;right:12px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.22);color:#fff;font-size:18px;display:grid;place-items:center;cursor:pointer}
+.cyctags{display:flex;gap:4px;margin-top:3px}.cyc{font-size:11px;font-weight:750;padding:1px 8px;border-radius:8px;color:#fff;background:#6b7280}.cyc.c1{background:#e8912d}.cyc.c2{background:#3b82c4}.cyc.c3{background:#8b5cc9}
 .addrow{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;margin:6px 0 4px;border:1.5px dashed var(--line);border-radius:14px;background:transparent;color:var(--muted);font:inherit;font-weight:650}.addrow:active{background:var(--card)}
 #nav button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .hero-plus{right:58px;font-size:24px;line-height:1}
@@ -493,7 +494,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.38.0';
+const VERSION='3.39.0';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -606,6 +607,7 @@ function normalizeState(){
   const d=defaults();
   for(const k in d) if(S[k]===undefined) S[k]=d[k];
   S.settings={...d.settings,...S.settings};
+  if(!S.settings.cycV39){ const tr=(S.folders||[]).find(f=>!f.parentId&&String(f.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()==='travail'); if(tr&&tr.cycles===undefined) tr.cycles=true; S.settings.cycV39=1; }
   if(!S.settings.plusV37){ S.settings.plusMode='list'; S.settings.plusV37=1; }
   if(!S.settings._bdayFix){ (S.events||[]).forEach(e=>{ if(e.source!=='local'&&isBirthday(e)){ if(e.sync==='pending') e.sync='ok'; delete e.syncErr; e.gUpdated=null; } }); S.settings.lastFullSync=0; S.settings._bdayFix=true; S.settings._bdayFree=true; }
   if(!S.settings._bdayFree){ (S.events||[]).forEach(e=>{ if(e.gid&&!e.start&&!e.readonly&&(e.source==='local'||isBirthday(e))) e.sync='pending'; }); S.settings._bdayFree=true; }
@@ -1144,10 +1146,14 @@ function tile(f){
 }
 /* Dossiers projet : statut des idées (à faire / en cours ; « fait » = coché) */
 const ST_L={afaire:'À faire',encours:'En cours'};
+const CYC=['C1','C2','C3'];
+let cycFilter='';
+const cyclesOn=id=>folderPath(id).some(f=>f.cycles);
+const cycTags=i=>i.cyc&&i.cyc.length&&cyclesOn(i.folderId)?`<div class="cyctags">${CYC.filter(c=>i.cyc.includes(c)).map(c=>`<span class="cyc ${c.toLowerCase()}">${c}</span>`).join('')}</div>`:'';
 const isProj=id=>!!(id&&(S.folders.find(f=>f.id===id)||{}).project);
 const normName=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 function itemRow(i){
-  return `<div class="item todo-item ${i.done?'done':''} ${(i.steps&&i.steps.length)||(i.images&&i.images.length)||subAddFor==='item:'+i.id?'top':''}" data-id="${i.id}">${i.done?'':'<span class="handle" aria-label="Déplacer">⠿</span>'}<button class="chk round ${i.done?'on':''}" data-a="toggleItem" data-id="${i.id}" aria-label="${i.done?'Marquer comme non terminée':'Marquer comme terminée'}"></button>${!i.done&&isProj(i.folderId)?`<button class="stchip st-${i.status==='encours'?'encours':'afaire'}" data-a="cycleStatus" data-id="${i.id}" aria-label="Changer le statut">${ST_L[i.status==='encours'?'encours':'afaire']}</button>`:''}<div class="grow" data-a="editItem" data-id="${i.id}"><div class="ttl">${i.lvl&&!i.done?`<span class="udot u-${i.lvl==='tres'?'tres':'urgent'}"></span>`:''}${linkify(esc(i.text))}</div>${subList(i,'item')}${i.images&&i.images.length?`<div class="thumbs">${i.images.map(id=>`<img data-img="${id}" data-a="viewImg" data-id="${id}" alt="">`).join('')}</div>`:''}</div><button class="icon-btn sm" data-a="moveItem" data-id="${i.id}" aria-label="Déplacer vers un dossier" title="Déplacer vers un dossier">📁↗</button>${i.done?'':subBtn(i,'item')}</div>`;
+  return `<div class="item todo-item ${i.done?'done':''} ${(i.steps&&i.steps.length)||(i.images&&i.images.length)||subAddFor==='item:'+i.id?'top':''}" data-id="${i.id}">${i.done?'':'<span class="handle" aria-label="Déplacer">⠿</span>'}<button class="chk round ${i.done?'on':''}" data-a="toggleItem" data-id="${i.id}" aria-label="${i.done?'Marquer comme non terminée':'Marquer comme terminée'}"></button>${!i.done&&isProj(i.folderId)?`<button class="stchip st-${i.status==='encours'?'encours':'afaire'}" data-a="cycleStatus" data-id="${i.id}" aria-label="Changer le statut">${ST_L[i.status==='encours'?'encours':'afaire']}</button>`:''}<div class="grow" data-a="editItem" data-id="${i.id}"><div class="ttl">${i.lvl&&!i.done?`<span class="udot u-${i.lvl==='tres'?'tres':'urgent'}"></span>`:''}${linkify(esc(i.text))}</div>${cycTags(i)}${subList(i,'item')}${i.images&&i.images.length?`<div class="thumbs">${i.images.map(id=>`<img data-img="${id}" data-a="viewImg" data-id="${id}" alt="">`).join('')}</div>`:''}</div><button class="icon-btn sm" data-a="moveItem" data-id="${i.id}" aria-label="Déplacer vers un dossier" title="Déplacer vers un dossier">📁↗</button>${i.done?'':subBtn(i,'item')}</div>`;
 }
 let notesSearchOn=false;
 function uncheckFolder(id){ const ids=[id,...descendants(id)]; let n=0; S.items.forEach(i=>{ if(ids.includes(i.folderId)&&i.done){ i.done=false; i.doneAt=null; n++; } }); return n; }
@@ -1168,8 +1174,10 @@ VIEWS.todo=()=>{
   const subs=S.folders.filter(f=>(f.parentId||null)===cur);
   const items=S.items.filter(i=>(i.folderId||null)===cur), done=items.filter(i=>i.done), proj=isProj(cur);
   let open=items.filter(i=>!i.done);
+  const cycOn=cyclesOn(cur); if(cycOn&&cycFilter) open=open.filter(i=>(i.cyc||[]).includes(cycFilter));
   if(proj){ const enc=open.filter(i=>i.status==='encours'); open=[...enc,...open.filter(i=>i.status!=='encours')];
     html+=`<div class="projbar"><span class="small"><b>🧩 Projet</b> · ${enc.length} en cours · ${open.length-enc.length} à faire · ${done.length} fait${done.length>1?'s':''}</span><button class="btn sm primary" data-a="sendClaude">🤖 Envoyer à Claude</button></div>`; }
+  if(cycOn) html+=chips([['','Tous'],...CYC.map(c=>[c,c])],cycFilter,'cycFilter',true);
   if(subs.length) html+=`<div class="tiles ${cur?'subfolder-tiles':''}" id="tiles" style="--folder-size:${folderSize}px;grid-template-columns:repeat(auto-fill,minmax(${folderSize}px,1fr))">${subs.map(tile).join('')}</div>`;
   if(!subs.length&&!items.length) html+=empty('📝','Rien ici pour l\'instant','Écrivez, dictez, prenez une photo ou créez un sous-dossier avec 📁+.');
   if(open.length) html+=`<div class="list" id="itemsList">${open.map(itemRow).join('')}</div>`;
@@ -1708,9 +1716,9 @@ function folderSheet(f,parentId){
   openSheet(isNew?'Nouveau dossier':'Dossier « '+f.name+' »',
     fld('Nom',inp('name',v.name,'text','required autofocus'))+fld('Icône',`<button type="button" class="btn sm ghost" onclick="applySuggestedFolderIcon()">✨ Icône conseillée selon le nom</button><div class="swatches iconpick">${[...new Set([v.icon||'📁',...FOLDER_ICONS])].map(ic=>`<label title="${ic}"><input type="radio" name="icon" value="${esc(ic)}" ${ic===(v.icon||'📁')?'checked':''}><span>${ic}</span></label>`).join('')}</div>`)+
     fld('Couleurs principales',`<div class="swatches">${FOLDER_COLOR_FAMILIES.map((f,i)=>`<label title="${f.name}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE}" onchange="showFolderShades(${i})" ${f.main===gradOf(v.color)?'checked':''}><span style="background:${f.main}"></span></label>`).join('')}</div>`)+fld('Déclinaisons de la couleur choisie',`<div>${FOLDER_COLOR_FAMILIES.map((f,i)=>`<div class="swatches folder-shade-group" style="display:${i===folderFamilyIndex(v.color)?'flex':'none'}" data-family="${i}">${f.shades.map((g,j)=>`<label title="${f.name} — déclinaison ${j+1}"><input type="radio" name="color" value="${i*FOLDER_FAMILY_SIZE+j+1}" ${g===gradOf(v.color)?'checked':''}><span style="background:${g}"></span></label>`).join('')}${i===folderFamilyIndex(v.color)&&ALL_GRADS.indexOf(gradOf(v.color))>=FOLDER_COLOR_FAMILIES.length*FOLDER_FAMILY_SIZE?`<label title="Ancienne couleur conservée"><input type="radio" name="color" value="${ALL_GRADS.indexOf(gradOf(v.color))}" checked><span style="background:${gradOf(v.color)}"></span></label>`:''}</div>`).join('')}</div>`)+fld('Dans le dossier',`<select name="parentId">${folderOptions(v.parentId,f?[f.id,...descendants(f.id)]:[])}</select>`)+
-    `<label class="srow"><span class="grow">🏖️ Tout décocher à la fin des vacances<div class="small muted">Le dernier jour des vacances scolaires, les notes cochées de ce dossier (et de ses sous-dossiers) redeviennent à faire.${S.settings.zone?'':' Choisis d\'abord ta zone de vacances dans Réglages.'}</div></span><input type="checkbox" class="sw" name="resetHol" ${v.resetHol?'checked':''}></label>`+`<label class="srow"><span class="grow">🧩 Dossier projet<div class="small muted">Chaque note a un statut (à faire, en cours) et le bouton « Envoyer à Claude » transmet la liste triée.</div></span><input type="checkbox" class="sw" name="project" ${v.project?'checked':''}></label>`+(isNew?'':`<button type="button" class="btn sm ghost" data-a="folderUncheck" data-id="${f.id}">↺ Tout décocher maintenant</button>`)+
+    `<label class="srow"><span class="grow">🏖️ Tout décocher à la fin des vacances<div class="small muted">Le dernier jour des vacances scolaires, les notes cochées de ce dossier (et de ses sous-dossiers) redeviennent à faire.${S.settings.zone?'':' Choisis d\'abord ta zone de vacances dans Réglages.'}</div></span><input type="checkbox" class="sw" name="resetHol" ${v.resetHol?'checked':''}></label>`+`<label class="srow"><span class="grow">🏷️ Vignettes de cycle (C1, C2, C3)<div class="small muted">Chaque note de ce dossier (et de ses sous-dossiers) peut être marquée C1, C2, C3 ou tous, avec un filtre en haut de la liste.</div></span><input type="checkbox" class="sw" name="cycles" ${v.cycles?'checked':''}></label>`+`<label class="srow"><span class="grow">🧩 Dossier projet<div class="small muted">Chaque note a un statut (à faire, en cours) et le bouton « Envoyer à Claude » transmet la liste triée.</div></span><input type="checkbox" class="sw" name="project" ${v.project?'checked':''}></label>`+(isNew?'':`<button type="button" class="btn sm ghost" data-a="folderUncheck" data-id="${f.id}">↺ Tout décocher maintenant</button>`)+
     '',
-    {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null,resetHol:!!fd.resetHol,project:!!fd.project});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
+    {onSave(fd){const name=fd.name.trim();if(!name)return false;const o=f||{id:uid()};Object.assign(o,{name,icon:fd.icon||'📁',color:ALL_GRADS[+fd.color]||ALL_GRADS[0],parentId:fd.parentId||null,resetHol:!!fd.resetHol,cycles:!!fd.cycles,project:!!fd.project});if(isNew)S.folders.push(o);save();render();toast(isNew?'📁 Dossier créé':'Dossier modifié')},
      onDelete:isNew?null:()=>{
        const ids=[f.id,...descendants(f.id)], its=S.items.filter(i=>ids.includes(i.folderId));
        if(!confirm(`Supprimer « ${f.name} »${ids.length>1?', ses '+(ids.length-1)+' sous-dossier(s)':''} et ${plural(its.length,'élément')} ? Action définitive.`)) return;
@@ -1725,10 +1733,11 @@ function itemSheet(it,pre){
   openSheet(isNew?'Nouvelle note':'Note',
     fld('Texte',`<textarea name="text" ${isNew?'autofocus':''} placeholder="Votre note…">${esc(it.text)}</textarea>`)+
     fld('Importance',seg('lvl',[['tres','<span class="udot u-tres"></span>Très important'],['imp','<span class="udot u-urgent"></span>Important'],['','Normal']],it.lvl||''))+
+    (cyclesOn(it.folderId)?fld('Cycle(s) concerné(s)',`<div class="wdays" id="cycBox">${CYC.map(c=>`<label><input type="checkbox" name="cy_${c}" ${(it.cyc||[]).includes(c)?'checked':''}><span>${c}</span></label>`).join('')}<button type="button" class="btn sm ghost" data-a="cycAll" style="margin-left:4px">Tous</button></div>`):'')+
     fld('Sous-éléments',stepsHTML())+
     fld('Photos',imgBoxHTML(isNew?'text':''))+
     fld('Dossier',`<select name="folderId">${folderOptions(it.folderId)}</select>`),
-    {onSave(fd){const text=fd.text.trim();if(!text&&!sheetImgs.length)return false;commitImgs(it);it.steps=readSteps();it.text=text||'Photo';it.folderId=fd.folderId||null;it.lvl=fd.lvl||'';if(isNew)S.items.push(it);save();render();if(isNew)toast('📝 Note ajoutée')},
+    {onSave(fd){const text=fd.text.trim();if(!text&&!sheetImgs.length)return false;commitImgs(it);it.steps=readSteps();it.text=text||'Photo';it.folderId=fd.folderId||null;it.lvl=fd.lvl||'';if($('#cycBox'))it.cyc=CYC.filter(c=>fd['cy_'+c]);if(isNew)S.items.push(it);save();render();if(isNew)toast('📝 Note ajoutée')},
      headSave:true,onDelete:isNew?null:()=>{closeSheet();removeUndo('items',it,'Note')}});
   refreshImgBox();
 }
@@ -1753,7 +1762,7 @@ function searchRender(q){
   S.tasks.forEach(x=>{if(hit(x.title+' '+(x.notes||'')+' '+(x.steps||[]).map(s=>s.t).join(' ')))R.push(['task',x.id,x.done?'✔️':'✅',x.title,(x.date?fmtDate(x.date):'Sans date')+(x.done?' · faite':'')])});
   S.events.forEach(e=>{if(hit(e.title+' '+(e.place||'')+' '+(e.notes||'')))R.push(['event',e.id,'📅',e.title,fmtDate(e.date)+(e.start?' '+e.start:'')+(e.place?' · '+e.place:'')])});
   S.folders.forEach(f=>{if(hit(f.name))R.push(['folder',f.id,f.icon||'📁',f.name,'Dossier'])});
-  S.items.forEach(i=>{if(hit(i.text+' '+(i.steps||[]).map(s=>s.t).join(' ')))R.push(['item',i.id,'📝',i.text,folderPath(i.folderId).map(f=>f.name).join(' › ')||'Notes'])});
+  S.items.forEach(i=>{if(hit(i.text+' '+(i.steps||[]).map(s=>s.t).join(' ')+' '+(i.cyc||[]).join(' ')))R.push(['item',i.id,'📝',i.text,folderPath(i.folderId).map(f=>f.name).join(' › ')||'Notes'])});
   S.reminders.forEach(r=>{if(hit(r.title))R.push(['rem',r.id,'🔔',r.title,r.recur!=='none'?'Récurrent':fmtDate(r.date)])});
   S.ideas.forEach(x=>{if(hit(x.title+' '+(x.note||'')))R.push(['idea',x.id,(LIBT[x.type]||['💡'])[0],x.title,'Idée'+(x.note?' · '+x.note:'')])});
   S.loans.forEach(l=>{if(hit(l.title+' '+l.person))R.push(['loan',l.id,'📚',l.title,'Prêté à '+l.person+(l.returned?' · rendu':'')])});
@@ -2610,6 +2619,8 @@ const A={
     if(sheetOpen) closeSheet(); save(); render(); toast('👁 Réaffiché'); },
   agShowHid(){ agShowHid=!agShowHid; render(); toast(agShowHid?'Événements masqués affichés (estompés)':'Événements masqués cachés'); },
   fold(k){ const s=S.settings; s.fold=s.fold||{}; s.fold[k]=!s.fold[k]; save(); render(); },
+  cycFilter(v){ cycFilter=v; render(); },
+  cycAll(){ const b=$$('#cycBox input'); const all=b.every(x=>x.checked); b.forEach(x=>x.checked=!all); },
   plusMode(v){ S.settings.plusMode=v; save(); render(); },
   textSize(v){ S.settings.textSize=+v; save(); render(); },
   copyMultiOn(id,el){ if(copyMulti){copyMulti=null;el.classList.remove('on')}else{copyMulti=new Set();copyMonth=(copyOrig||today()).slice(0,7);el.classList.add('on');el.parentNode.querySelectorAll('[data-a=copyShift]').forEach(c=>c.classList.remove('on'))} renderCpCal(); },

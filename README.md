@@ -3,6 +3,9 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.39
+- **Vignettes de cycle sur les notes** : ⋯ du dossier › « 🏷️ Vignettes de cycle (C1, C2, C3) » (activé d'office pour le dossier Travail, sous-dossiers compris). Dans la fiche d'une note, « Cycle(s) concerné(s) » : C1, C2, C3, ou « Tous ». Les vignettes s'affichent sous la note ; filtre Tous / C1 / C2 / C3 en haut de la liste ; la recherche trouve « C2 ». Champ `cyc` sur la note, `cycles` sur le dossier.
+
 ## Nouveautés v3.38
 - **Événements informatifs** : dans la fiche d'un événement avec heure (y compris ceux des agendas en lecture seule), « ℹ️ Informatif » pour celui-ci ou pour tous ceux du même nom. Il reste affiché (bordure en pointillés) mais ne bloque plus le créneau : tâches et 💡 suggestions peuvent y passer. Les événements créés dans Thêta sont envoyés à Google Agenda comme « Disponible ». « 🕐 Bloque le créneau » annule. Réglages `infEv` et `infTitles`, propres à chaque appareil.
 
