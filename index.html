@@ -499,7 +499,7 @@ button,.btn,.icon-btn,.chip,.crumb,.chk{transition:background-color .16s ease,bo
 <script>
 'use strict';
 /* ================= Utilitaires ================= */
-const VERSION='3.40.0';
+const VERSION='3.40.1';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,'0');
@@ -733,6 +733,13 @@ function foldSec(k,t,n){const f=folded(k);return `<button type="button" class="s
 const sec=(t,n,extra='')=>`<div class="sec">${t}${n!=null&&n!==''?`<span class="n">${n}</span>`:''}${extra}</div>`;
 const empty=(ic,t,s,mini)=>`<div class="empty ${mini?'mini':''}">${ic?`<div class="big">${ic}</div>`:''}<b>${t}</b>${s||''}</div>`;
 const chips=(opts,cur,act,fit)=>`<div class="chips ${fit?'fit':''}" ${fit?`style="--n:${opts.length}"`:''}>${opts.map(([v,l])=>`<button class="chip ${v===cur?'on':''}" data-a="${act}" data-id="${v}">${l}</button>`).join('')}</div>`;
+// Bandeau d'état de la synchro (écran Jour) : visible seulement quand elle est en pause, avec le bouton qui la relance
+function syncBanner(){
+  const st=S.settings; if(!st.clientId||!st.autoSync||!st.lastSync) return '';
+  if(!tokValid()) return `<button class="banner" data-a="sync">🟡 Synchro en pause : session Google expirée<span class="grow"></span>Reconnecter</button>`;
+  if(st.driveSync!==false&&!hasDrive()) return `<button class="banner" data-a="gDriveAuth">🟡 Notes et tâches non synchronisées : accès Drive manquant<span class="grow"></span>Autoriser</button>`;
+  return '';
+}
 const syncTag=o=>o.sync==='pending'?'<span class="tag sync">⏳ à synchroniser</span>':'';
 const searchBtn=()=>`<button class="icon-btn" data-a="search" aria-label="Rechercher">🔍</button>`;
 const syncBtn=()=>S.settings.clientId?`<button class="icon-btn" data-a="sync" aria-label="Synchroniser"><span class="${syncing?'spin':''}" style="display:inline-block">🔄</span></button>`:'';
@@ -1091,6 +1098,7 @@ VIEWS.jour=()=>{
   if(rems.length) html+=foldSec('j-rem','Rappels',rems.length)+(folded('j-rem')?'':`<div class="list">${rems.map(r=>remRow(r,t)).join('')}</div>`);
   const nrev=S.notes.filter(n=>n.status==='review').length;
   if(nrev) html+=sec('À ranger',nrev)+reviewCards();
+  if(isToday) html+=syncBanner();
   if(isToday&&hasData&&!S.settings.driveFileId&&(!S.settings.lastBackup||Date.now()-S.settings.lastBackup>14*864e5)) html+=`<button class="banner" data-a="export">💾 Pensez à sauvegarder vos données<span class="grow"></span>Exporter</button>`;
   if(isToday){
     const T3=open.filter(x=>isWork(x)&&effUrg(x)==='tres'&&!x.time), need=T3.reduce((a,x)=>a+(+x.duration||30),0), fr=freeSlots(t).reduce((a,[x,y])=>a+Math.max(0,y-x),0);
@@ -3032,14 +3040,15 @@ function init(){
   if(tokValid()&&S.settings.autoSync) setTimeout(()=>sync(false),1200);
   // Vérifie les nouveautés toutes les 2 min 30 tant que Thêta est ouverte
   setInterval(()=>{ if(document.visibilityState==='visible'&&navigator.onLine&&tokValid()&&S.settings.autoSync&&!sheetOpen) sync(false); },150000);
-  // Session Google expirée (ou presque) : on la renouvelle au toucher de la barre d'onglets, puis on synchronise
+  // Session Google expirée (ou presque) : on la renouvelle au toucher (ou au clic) de la barre d'onglets, puis on synchronise.
+  // « click » et non « pointerup » : à la souris, pointerup ne compte pas comme un geste, le navigateur bloquait la fenêtre Google (v3.40.1).
   let renewAt=0, renewOff=false;
-  document.addEventListener('pointerup',e=>{
+  document.addEventListener('click',e=>{
     if(!e.target.closest('#nav')) return;
     const st=S.settings; if(renewOff||st.autoRenew===false||!st.clientId||!st.autoSync||!st.lastSync||!navigator.onLine||syncing||!gAccount()) return;
     if(gTok&&gTok.exp-Date.now()>5*60e3) return;
-    if(Date.now()-renewAt<45*60e3) return; renewAt=Date.now();
-    getToken(true,true).then(()=>sync(false)).catch(()=>{ renewOff=true; });
+    if(Date.now()-renewAt<10*60e3) return; renewAt=Date.now();
+    getToken(true,true).then(()=>sync(false)).catch(err=>{ if(err&&err.message==='Connexion annulée') renewOff=true; render(); });
   },true);
   setTimeout(()=>loadHolidays(false),2000);
   // Agenda : glisser à gauche / à droite pour passer au mois (semaine, jour) suivant ou précédent

@@ -3,6 +3,9 @@
 Web-app personnelle, 100 % locale, hors ligne, installable sur Android.
 
 
+## Nouveautés v3.40.1
+- **Synchro depuis un ordinateur** : la session Google (1 h) se renouvelle maintenant au clic de souris sur la barre d'onglets (avant, seul le toucher au doigt marchait : à la souris, le navigateur bloquait la fenêtre Google, et Thêta abandonnait jusqu'au rechargement). Bandeau « 🟡 Synchro en pause » sur l'écran Jour quand la session est expirée, ou quand l'accès Drive manque (notes et tâches sans date ne passent que par Drive) ; un clic relance la synchro.
+
 ## Nouveautés v3.40
 - **Vignettes personnalisables** : Réglages › « 🏷️ Vignettes des notes ». Crée, renomme, recolore (toucher la pastille) ou supprime tes vignettes (C1, C2, C3 au départ), puis attribue-les aux dossiers et sous-dossiers de ton choix (les sous-dossiers héritent du parent). Même choix dans la fiche d'un dossier. Réglage `badges` (synchronisé avec Drive), `badges` sur le dossier, `cyc` (ids) sur la note. Remplace l'interrupteur « Vignettes de cycle » de la v3.39 (le dossier Travail garde C1, C2, C3).
 
